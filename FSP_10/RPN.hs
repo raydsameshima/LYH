@@ -22,3 +22,8 @@ solveRPN = head . foldl foldingFunction [] . words
         foldingFunction (x:xs) "ln" = (log x):xs
         foldingFunction xs "sum" = [sum xs]
         foldingFunction xs numString = read numString:xs
+{-
+This RPN calculation solution is not really fault tolerant.
+When given input that doesn't make sense, it might result in a runtime error.
+But don't worry, you'll learn how to make this function more robust in Ch. 14.
+-}
