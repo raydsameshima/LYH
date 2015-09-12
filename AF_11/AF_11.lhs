@@ -2,12 +2,41 @@ AF_11.lhs
 
 > module AF_11 where
 
+... and type classes makes implementing polymorphism much easier than in other languages.
+
+
 https://en.wikibooks.org/wiki/Haskell/Category_theory#Functors_on_Hask
 
 Functors in Haskell are from Hask to func, where func is the subcategory of Hask defined on just that functor's types.
 
 class Functor (f :: * -> *) where
   fmap :: (a -> b) -> f a -> f b
+  
+"Give me a function that takes an a and returns a b and a box with an a (or several of them) inside it, and I'll give with a b (or several of them) inside it."
+
+We can also look at functor values as values with an added context.
+  Maybe :: they might have failed
+  lists :: the values can actually be several values at once or none
+fmap applies a function to the value while preserving its context.
+
+I/O Actions As Functors
+
+instance Functor IO where
+  fmap f action = do
+    result <- action
+    return (f result)
+The result of mapping something over an I/O action will be an I/O action, so right off the bat, we use the do syntax to glue two actions and make a new one.
+In the implementation for fmap, we make a new I/O action that first performs the original I/O action and calls its result result.
+Then we do return (f result).
+Recall that return is a function that makes an I/O action that doesn't do anything but only yields something as its result.
+
+Example:
+main = do
+  line <- fmap reverse getLine
+  -- line' <- getLine
+  -- let line = reverse line'
+  putStrLn $ "You said " ++ line ++ " backwards!"
+  putStrLn $ "Yes, you really said " ++ line ++ " backwards!"
 
 Functor Law 1 (fmap id = id)
 The first functor law states that if we map the id function over a functor value, the functor value that we get back should be the same as the original functor value.
