@@ -25,7 +25,7 @@ instance Functor IO where
   fmap f action = do
     result <- action
     return (f result)
-The result of mapping something over an I/O action will be an I/O action, so right off the bat, we use the do syntax to glue two actions and make a new one.
+The result of mapping something over an I/O action will be an I/O action, so right off the bat(at the very beginning), we use the do syntax to glue two actions and make a new one.
 In the implementation for fmap, we make a new I/O action that first performs the original I/O action and calls its result result.
 Then we do return (f result).
 Recall that return is a function that makes an I/O action that doesn't do anything but only yields something as its result.
