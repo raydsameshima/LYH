@@ -106,21 +106,47 @@ The second law says that composing two function over a functor should be the sam
 
 Using Applicative Functors
 
-class Functor f => Applicative (f :: * -> *) where
-  pure :: a -> f a
-  (<*>) :: f (a -> b) -> f a -> f b
+  class Functor f => Applicative (f :: * -> *) where
+    pure :: a -> f a
+    (<*>) :: f (a -> b) -> f a -> f b
+pure should take a value of any type and return an applicative value with that value inside it.
+We take a value and wrap it in an applicative value ("default" value) that has that value as the result inside it.
+(<*>) can be seen as a beefed-up fmap:
+  fmap :: (a -> b) -> f a -> f b
+Whereas fmap takes a function and a functor value that has a function inside the functor value, (<*>) takes a functor value that has a function in it and another functor, and extracts that function from first functor and then maps it over the second one.
 
-With normal functors, when you map a function over a functor, you can't get the result out in any general way, even if the result is a partially applied functor.
+With normal functors, when you (f)map a function over a functor, you can't get the result out in any general way, even if the result is a partially applied functor.
 Applicative functors, on the other hand, allow you to operate on several functors with a single function.
 
-Prelude Control.Applicative> Just (+3) <*> Just 9
-Just 12
-Prelude Control.Applicative> pure (+3) <*> Just 10
-Just 13
+Maybe the Applicative Functor
+  instance Applicative Maybe where
+    pure = Just
+    Nothing  <*> _         = Nothing
+    (Just f) <*> something = fmap f something
+
+The Applicative Style
+  Prelude Control.Applicative> pure (+) <*> ([3]) <*> ([5])
+  [8]
+  Prelude Control.Applicative> pure (+) <*> Just 3 <*> Just 5
+  Just 8
+
+  Prelude Control.Applicative> Just (+3) <*> Just 9
+  Just 12
+  Prelude Control.Applicative> pure (+3) <*> Just 10
+  Just 13
+
+IO Is An Applicative Functor, Too
+  instance Applicative IO where
+    pure = return
+    a <*> b = do f <- a
+                 x <- b
+                 reurn (f x)
+see 
+http://d.hatena.ne.jp/kazu-yamamoto/20101211/1292021817
 
 Applicative Laws
-f <*> x                    = fmap f x
-pure id <*> v              = v 
-pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
-pure f <*> pure x          = pure (f x)
-u <*> pure y               = pure y ($ y) <*> u
+  f <*> x                    = fmap f x
+  pure id <*> v              = v 
+  pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
+  pure f <*> pure x          = pure (f x)
+  u <*> pure y               = pure y ($ y) <*> u
