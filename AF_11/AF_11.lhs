@@ -31,12 +31,65 @@ Recall that return is a function that makes an I/O action that doesn't do anythi
   return :: Monad m => a -> m a
 
 Example:
-main = do
-  line <- fmap reverse getLine
-  -- line' <- getLine
-  -- let line = reverse line'
-  putStrLn $ "You said " ++ line ++ " backwards!"
-  putStrLn $ "Yes, you really said " ++ line ++ " backwards!"
+  main = do
+    line <- fmap reverse getLine
+    -- line' <- getLine
+    -- let line = reverse line'
+    putStrLn $ "You said " ++ line ++ " backwards!"
+    putStrLn $ "Yes, you really said " ++ line ++ " backwards!"
+
+  fmap :: Functor f => (a -> b) -> f a -> f b
+  reverse :: [] a -> [] a
+  getLine :: IO String
+
+By definition, 
+  fmap reverse getLine = do result <- getLine
+                            return (reverse result)
+Just as we can (fmap reverse) over Just "Blah" to get Just "halb",
+  Prelude> fmap reverse $ Just "Blah"
+  Just "halB"
+we can fmap reverse over getLine.
+
+Functions As Functors
+  instance Functor ((->) r) where
+    fmap f g (\x -> f (g x))
+The (co)restriction of fmap is
+  fmap :: (a -> b) -> ((->) r a) -> ((->) r b)
+or
+  fmap :: (a -> b) -> (r -> a) -> (r -> b)
+i.e. fmap is just the function composition.
+Therefore, we have another way to write this instane:
+  instance Functor ((->) r) where
+    fmap = (.)
+Example:
+  Prelude> :type fmap (*3) (+100)
+  fmap (*3) (+100) :: Num a => a -> a
+  Prelude> fmap (*3) (+100) 1
+  303
+  Prelude> (*3) `fmap` (+100) $ 1
+  303
+We can call fmap as an infix function so that the resemblance to . is clear.
+Just like all functors, functions can be thought of as values with contexts.
+When we have a function like (+3), we can view the value as the eventual result of the function (since all function is not an instance of Show), and the context is that we need to apply the function to something to get to the result.
+
+If we write
+  fmap :: (a -> b) -> f a -> f b
+as
+  fmap :: (a -> b) -> (f a -> f b)
+then, we can think of fmap (not as a function that takes one function and a functor value and returns a functor value,) but as a function that takes a function and returns a new function that’s just like the old one, except that it takes a functor value as a parameter and returns a functor value as the result.
+It takes a function (a -> b) and returns a function (f a -> f b).
+This is called lifting a function, e.g.
+  Prelude> :type fmap (*2)
+  fmap (*2) :: (Num b, Functor f) => f b -> f b
+  Prelude> :t fmap (replicate 3)
+  fmap (replicate 3) :: Functor f => f a -> f [a]
+
+  Prelude> fmap (*2) $ Just 3
+  Just 6
+  Prelude> fmap (replicate 3) $ Just 10
+  Just [10,10,10]
+  Prelude> fmap (replicate 3) $ "Haskell"
+  ["HHH","aaa","sss","kkk","eee","lll","lll"]
 
 Functor Law 1: fmap id = id
 The first functor law states that if we map the id function over a functor value, the functor value that we get back should be the same as the original functor value.
@@ -50,6 +103,8 @@ Example:
 Functor Law 2: fmap (g . f) = fmap g . fmap f 
 The second law says that composing two function over a functor should be the same as first mapping one function over the functor and then mapping other one.
   fmap :: Functor f => (a -> b) -> f a -> f b
+
+Using Applicative Functors
 
 class Functor f => Applicative (f :: * -> *) where
   pure :: a -> f a

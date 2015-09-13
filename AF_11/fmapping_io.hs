@@ -11,4 +11,9 @@ main = do
 $ runhaskell fmapping_io.hs 
 Hello Haskell
 L-L-E-K-S-A-H- -O-L-L-E-H
+
+hask
+HASK
+KSAH
+K-S-A-H
 -}
