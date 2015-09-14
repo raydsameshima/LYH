@@ -237,6 +237,21 @@ With
 (+3) and (*100) are first applied to 5, resulting in 8 and 500.
 Then + is caled with 8 and 500, resulting in 508.
 
+Zip Lists
+  Prelude Control.Applicative> [(+3),(*2)] <*> [1,2]
+  [4,5,2,4]
+However, 
+  [(+3),(*2)] <*> [1,2]
+could also work in "tensor":
+  [(+3),(*2)] <*> [1,2] = [(+3) 1, (*2) 2]
+                        = [4, 4]
+
+  instance Applicative ZipList where
+    pure x = ZipList (repeat x)
+    ZipList fs <*> ZipList xs = ZipList (zipWih (\f x -> f x) fs xs)
+  
+
+
 Applicative Laws
   f <*> x                    = fmap f x
   pure id <*> v              = v 
