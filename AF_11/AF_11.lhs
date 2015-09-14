@@ -195,8 +195,47 @@ IO Is An Applicative Functor, Too
     a <*> b = do f <- a
                  x <- b
                  return (f x)
-see 
-http://d.hatena.ne.jp/kazu-yamamoto/20101211/1292021817
+
+see also "http://d.hatena.ne.jp/kazu-yamamoto/20101211/1292021817"
+
+Since pure is all about putting a value in a minimal ("default") context that still holds the value as the result, it makes sence that pure is just return (return makes an I/O action that doesn't do anything.)
+
+sequencing
+
+Consider this:
+  myAction :: IO String
+  myAction = do a <- getLine
+                b <- getLine
+                return $ a ++ b
+Another way of writing this is to use the applicative style:
+  myAction' :: IO String
+  myAction' (++) <$> getLine <*> getLine
+
+If we return to the box analogy, we can imagine getLine as a box that will go out into the real world and fetch us a string.
+Calling
+  (++) <$> getLine <*> getLine
+makes a new bigger box that sends those two boxes out to fetch lines from the terminal and then presents the concatenation of those lines as its result.
+It's type is IO string, and therefore we can do like
+  main = do 
+    a <- (++) <$> getLine <*> getLine
+    putStrLn $ "The two lines concatenated turn out to be: " ++ a
+
+Functions As Applicatives
+
+  instance Applicative ((->) r) where
+    pure x = (\_ -> x)
+    f <*> g = \x -> f x (g x)
+
+Example:
+  Prelude Control.Applicative> :type (+) <$> (+3) <*> (*100)
+  (+) <$> (+3) <*> (*100) :: Num b => b -> b
+  Prelude Control.Applicative> (+) <$> (+3) <*> (*100) $ 5
+  508
+
+With 
+  (+) <$> (+3) <*> (*100) $ 5
+(+3) and (*100) are first applied to 5, resulting in 8 and 500.
+Then + is caled with 8 and 500, resulting in 508.
 
 Applicative Laws
   f <*> x                    = fmap f x
