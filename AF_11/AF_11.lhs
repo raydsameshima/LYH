@@ -238,19 +238,44 @@ With
 Then + is caled with 8 and 500, resulting in 508.
 
 Zip Lists
+Using the following applicative style, we get
   Prelude Control.Applicative> [(+3),(*2)] <*> [1,2]
   [4,5,2,4]
-However, 
-  [(+3),(*2)] <*> [1,2]
-could also work in "tensor":
+since
+  [(+3),(*2)] <*> [1,2] = [(+3) 1, (+3) 2, (*2) 1, (*2) 2]
+                        = [4     , 5     , 2     , 4     ]
+However, we sometimes need this expression as a "tensor":  
   [(+3),(*2)] <*> [1,2] = [(+3) 1, (*2) 2]
                         = [4, 4]
+
+Because one type can't have two instances for the same type class, the 
+  ZipList a
+type was introduced, which has one constructor (ZipList) with just one field (a list).
 
   instance Applicative ZipList where
     pure x = ZipList (repeat x)
     ZipList fs <*> ZipList xs = ZipList (zipWih (\f x -> f x) fs xs)
-  
+    
+where 
 
+  zipWith :: (a -> b -> c) -> [a] -> [b] -> [c]
+
+<*> applies the first function to the first value, the second function to the second value, and so on.
+
+  > let myZipList = (+) <$> ZipList [1,2,3] <*> ZipList [100, 100, 100]
+  > myZipList 
+  ZipList {getZipList = [101,102,103]}
+  > getZipList myZipList 
+  [101,102,103]
+  > max <$> ZipList [1,2,3,4,5,3] <*> ZipList [5,3,1,2] 
+  ZipList {getZipList = [5,3,3,4]}
+  > (,,) <$> ZipList "dog" <*> ZipList "cat" <*> ZipList "rat"
+  ZipList {getZipList = [('d','c','r'),('o','a','a'),('g','t','t')]}
+  > :type (,,)
+  (,,) :: a -> b -> c -> (a, b, c)
+
+The (,,) function is indeed the same as
+  (,,) = \x y z -> (x,y,z)
 
 Applicative Laws
   f <*> x                    = fmap f x
