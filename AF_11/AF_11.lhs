@@ -2,6 +2,8 @@ AF_11.lhs
 
 > module AF_11 where
 
+> import Control.Applicative
+
 ... and type classes makes implementing polymorphism much easier than in other languages.
 
 https://en.wikibooks.org/wiki/Haskell/Category_theory#Functors_on_Hask
@@ -283,3 +285,10 @@ Applicative Laws
   pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
   pure f <*> pure x          = pure (f x)
   u <*> pure y               = pure y ($ y) <*> u
+
+Useful Functions for Applicatives
+
+> sequenceA :: (Applicative f) => [f a] -> f [a]
+> sequenceA []     = pure []
+> sequenceA (x:xs) = (:) <$> x <*> sequenceA xs 
+
