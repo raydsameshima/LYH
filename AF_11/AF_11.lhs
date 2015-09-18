@@ -292,3 +292,4 @@ Useful Functions for Applicatives
 > sequenceA []     = pure []
 > sequenceA (x:xs) = (:) <$> x <*> sequenceA xs 
 
+

@@ -6,6 +6,8 @@ Monoids_12.lhs
 > import qualified Data.Foldable as F
 > import MOOTATC_07 
 
+Wrapping an Existing Type into a New Type
+
 type vs. newtype vs. data
 
 type for type synonyms, if you want your type signatures to look cleaner and be more descriptive.
