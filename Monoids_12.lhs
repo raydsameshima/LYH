@@ -7,6 +7,56 @@ Monoids_12.lhs
 > import MOOTATC_07 
 
 Wrapping an Existing Type into a New Type
+  newtype
+
+tensor like behavior
+  > [(+1), (*100), (*5)] <*> [1,2,3]
+  [2,3,4,100,200,300,5,10,15]
+  > :type (<*>)
+  (<*>) :: Applicative f => f (a -> b) -> f a -> f b
+
+direct product like behavior
+  > ZipList [(+1), (*100), (*5)] <*> ZipList [1,2,3]
+  ZipList {getZipList = [2,200,15]}
+  > :info ZipList
+    newtype ZipList a = ZipList {getZipList :: [a]}
+      -- Defined in ‘Control.Applicative’
+    instance Eq a => Eq (ZipList a) -- Defined in ‘Control.Applicative’
+    instance Functor ZipList -- Defined in ‘Control.Applicative’
+    instance Ord a => Ord (ZipList a)
+      -- Defined in ‘Control.Applicative’
+    instance Read a => Read (ZipList a)
+      -- Defined in ‘Control.Applicative’
+    instance Show a => Show (ZipList a)
+      -- Defined in ‘Control.Applicative’
+    instance Applicative ZipList -- Defined in ‘Control.Applicative’
+
+The newtype keyword in Haskell is made exactly for cases when we want to just take one type and wrap it in something to present it as another type.
+(we can also use data keyword, but for wrapping, newtype keyword is faster.)
+If you want it to be the same internally but have a different type, use newtype keyword.
+
+When you make a new type from an existing type by using the newtype keyword, you can have only one value constructor, and that value constructor can have only one filed.
+But with data keyword, you can make data types that have several value constructors, and each constructor can have zero or more fields:
+  data Profession = Fighter | Archer | Accountant
+  data Race = Human | Elf | Orc | Goblin
+  data PlayerCharacter = PlayerCharacter Race Profession
+
+Example:
+
+> newtype CharList = CharList { getCharList :: [Char] } deriving (Eq, Show)
+
+  CharList {getCharList = "this will be shown!"}
+  *Monoids_12> CharList "bunny" == CharList "benny"
+  False
+  *Monoids_12> CharList "bunny" == CharList "bunny"
+  True
+  *Monoids_12> getCharList C
+  Char      CharList  CharList  Circle
+  *Monoids_12> getCharList CharList "aiueo"
+  *Monoids_12> getCharList $ CharList "aiueo"
+  "aiueo"
+
+
 
 type vs. newtype vs. data
 

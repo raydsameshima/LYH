@@ -237,16 +237,16 @@ Example:
 With 
   (+) <$> (+3) <*> (*100) $ 5
 (+3) and (*100) are first applied to 5, resulting in 8 and 500.
-Then + is caled with 8 and 500, resulting in 508.
+Then + is called with 8 and 500, resulting in 508.
 
 Zip Lists
-Using the following applicative style, we get
+Using the following applicative style, we get a "tensor" like behavior
   Prelude Control.Applicative> [(+3),(*2)] <*> [1,2]
   [4,5,2,4]
 since
   [(+3),(*2)] <*> [1,2] = [(+3) 1, (+3) 2, (*2) 1, (*2) 2]
                         = [4     , 5     , 2     , 4     ]
-However, we sometimes need this expression as a "tensor":  
+However, we sometimes need this expression as a "direct product":  
   [(+3),(*2)] <*> [1,2] = [(+3) 1, (*2) 2]
                         = [4, 4]
 
