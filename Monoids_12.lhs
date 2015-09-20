@@ -6,8 +6,7 @@ Monoids_12.lhs
 > import qualified Data.Foldable as F
 > import MOOTATC_07 
 
-Wrapping an Existing Type into a New Type
-  newtype
+Wrapping an Existing Type into a New Type (newtype keyword)
 
 tensor like behavior
   > [(+1), (*100), (*5)] <*> [1,2,3]
@@ -56,12 +55,6 @@ Example:
   *Monoids_12> getCharList $ CharList "aiueo"
   "aiueo"
 
-type v.s. newtype v.s. data
-
-type for type synonyms, if you want your type signatures to look cleaner and be more descriptive.
-If you want to an existing type and wrap it in a new type in order to make it an instance of a type class, chances are you're looking for a newtype.
-If you want to make something completely new, odds are good that you're looking for the data keyword.
-
 Using newtype to Make Type Class Instances
 
 > newtype Pair b a = Pair { getPair :: (a,b)} 
@@ -79,6 +72,58 @@ Using newtype to Make Type Class Instances
   Pair {getPair = ("gnillac nodnoL",3)}
 
 On newtype Laziness
+The only thing that can be done with newtipe keyword is turning an existing type into a new type, so internally, Haskell can represent the values of types defined with newtype just like the original ones, while knowing that their types are now distinct.
+This means that not only is newtype usually faster than data, its pattern-matching mechanism is lazier.
+
+Haskell is lazy by default, so called the "call-by-need" evaluation strategy.
+  Prelude> :type undefined
+  undefined :: t
+  Prelude> head [3,4,5,undefined]
+  3
+  Prelude> [3,3,3,undefined]
+  [3,3,3,*** Exception: Prelude.undefined
+
+> data CoolBool = CoolBool { getCoolBool :: Bool }
+> helloMe :: CoolBool -> String
+> helloMe (CoolBool _) = "hello"
+
+  *Monoids_12> helloMe (CoolBool True)
+  "hello"
+  *Monoids_12> helloMe (CoolBool undefined)
+  "hello"
+  *Monoids_12> helloMe undefined
+  "*** Exception: Prelude.undefined
+
+Why did this exception happen?
+Types defined with the data keyword can have multiple value constructors (even though CoolBool has only one).
+So in order to see if the value given to our function conforms to the 
+  (CoolBool _) 
+pattern, Haskell must evaluate the value just enough to see which value constructor was used when we made the value.
+And when we try to evaluate an undefined value, even a little, an exception is thrown.
+
+Instead of using the data keyword for CoolBool, let's try using newtype:
+
+> newtype CoolerBool = CoolerBool { getCoolerBool :: Bool }
+> pleaseHelloMe :: CoolerBool -> String
+> pleaseHelloMe (CoolerBool _) = "hello!"
+
+  *Monoids_12> helloMe undefined 
+  "*** Exception: Prelude.undefined
+  *Monoids_12> pleaseHelloMe undefined
+  "hello!"
+
+It works, but why?
+Using newtype keyword, Haskell can internally represent the value of the new type in the same way as the original values.
+It doesn't need to add another box around them; it just must be aware of the values being of different types.
+And because Haskell knows that types made with the newtype keyword can have only one constructor, it doesn't need to evaluate the value passed to the function to make sure that the value conforms to the
+  (CoolerBool _)
+pattern, because newtype types can have only one possible value constructor and one field!
+
+type vs. newtype vs. data
+
+type for type synonyms, if you want your type signatures to look cleaner and be more descriptive.
+If you want to an existing type and wrap it in a new type in order to make it an instance of a type class, chances are you're looking for a newtype.
+If you want to make something completely new, odds are good that you're looking for the data keyword.
 
 About Those Monoids
 
