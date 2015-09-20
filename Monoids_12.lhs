@@ -56,13 +56,29 @@ Example:
   *Monoids_12> getCharList $ CharList "aiueo"
   "aiueo"
 
-
-
-type vs. newtype vs. data
+type v.s. newtype v.s. data
 
 type for type synonyms, if you want your type signatures to look cleaner and be more descriptive.
 If you want to an existing type and wrap it in a new type in order to make it an instance of a type class, chances are you're looking for a newtype.
 If you want to make something completely new, odds are good that you're looking for the data keyword.
+
+Using newtype to Make Type Class Instances
+
+> newtype Pair b a = Pair { getPair :: (a,b)} 
+>   deriving (Show)
+> instance Functor (Pair c) where
+>   fmap f (Pair (x,y)) = Pair (f x, y)
+
+  *Monoids_12> fmap (*100) (Pair (2,3))
+  Pair {getPair = (200,3)}
+  *Monoids_12> getPair $ fmap (*100) (Pair (2,3))
+  (200,3)
+  *Monoids_12> fmap (+10) it
+  Pair {getPair = (210,3)}
+  *Monoids_12> fmap reverse $ Pair ("London calling", 3)
+  Pair {getPair = ("gnillac nodnoL",3)}
+
+On newtype Laziness
 
 About Those Monoids
 
