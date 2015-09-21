@@ -126,6 +126,100 @@ If you want to an existing type and wrap it in a new type in order to make it an
 If you want to make something completely new, odds are good that you're looking for the data keyword.
 
 About Those Monoids
+A monoid is a structure set M with associative binary operation *:M -> M -> M with unit:
+  c*(b*a) = cba = (c*b)*a
+  e*m = m = m*e
+
+The Monoid Type Class
+A monoid is made up of an associative binary funcion and a value that acts as an identity with respect to that function.
+
+  class Monoid m where
+    mempty :: m            -- identity
+    mappend :: m -> m -> m -- binary operation
+    mconcat :: [m] -> m
+    mconcat = foldr mappend mempty -- guaranteed by the associativity
+
+The Monoid Laws
+The identity law and the associativity.
+
+Meet Some Monoids
+Lists Are Monoids
+Product and Sum
+
+> newtype MyProduct a = MyProduct { getMyProduct :: a }
+>   deriving (Eq, Ord, Read, Show, Bounded)
+> instance Num a => Monoid (MyProduct a) where
+>   mempty = MyProduct 1
+>   MyProduct x `mappend` MyProduct y = MyProduct (x*y)
+  
+  *Monoids_12> MyProduct 3 `mappend` MyProduct 9
+  MyProduct {getMyProduct = 27}
+  *Monoids_12> MyProduct 3 `mappend` mempty 
+  MyProduct {getMyProduct = 3}
+  *Monoids_12> mempty `mappend` MyProduct 7
+  MyProduct {getMyProduct = 7}
+  *Monoids_12> mconcat . map MyProduct $ [3,4,5]
+  MyProduct {getMyProduct = 60}
+  *Monoids_12> getMyProduct it
+  60
+
+Any and All
+
+The Ordering Monoid
+  instance Monoid Ordering where
+    mempty = EQ
+    LT `mappend` _ = LT
+    EQ `mappend` y = y
+    GT `mappend` _ = GT
+The instance is set up like this:
+When we mappend two Ordering values, the one on the left is kept, unless the value on the left is EQ, the right one is the result.
+
+...but it actually resembles the way we alphabetically compare words.
+We look at the first two letters, and if they differ, we can already decide which word would go first in a dictionary.
+However, if the first two letters are equal, then we move on to comparing the next pair of letters and repeat the process.
+
+  *Monoids_12> ('a' `compare` 'a') `mappend` ('t' `compare` 's') 
+  GT
+  *Monoids_12> "at" `compare` "as"
+  GT
+
+Let's say we are writing a function that takes two strings, compares their lengths, and returns an Ordering.
+But if the strings are of the same length, instead or retuning EQ right away, we want to compare them alphabetically:
+
+> lengthCompare :: String -> String -> Ordering
+> lengthCompare x y 
+>   = (length x `compare` length y) `mappend` (x `compare` y)
+
+  *Monoids_12> lengthCompare "zen" "ants"
+  LT
+  *Monoids_12> lengthCompare "zen" "ant"
+  GT
+
+Remember that when we use mappend, its left parameter is kept unless it's EQ; if it's EQ, the right one is kept.
+That's why we put the comparison that we consider to be the first, more important, criterion as the first parameter.
+Now suppose that we want to expand this function to also compare for the number of vowels and set this to be second most important criterion for comparison:
+  lengthCompare x y 
+    = (length x `compare` length y) `mappend`
+      (vowels x `compare` vowels y) `mappend`
+      (x `compare` y)
+      where vowels = length . filter (`elem` "aiueo`)
+
+Maybe the Monoid
+Let's take a look at the various ways that Maybe a can be made an instance of Monoid and how those instances are useful.
+
+wrapping
+  instance Monoid m => Monoid (Maybe m) where
+    mempty = Nothing  -- identity
+    Nothing `mappend` a = a
+    a `mappend` Nothing = a
+    Just a1 `mappend` Just a2 = Just (a1 `mappend` a2)
+
+  *Monoids_12> Just "Judy and " `mappend` Just "Mary"
+  Just "Judy and Mary"
+
+But what if the type of the contents of the Maybe is not an instance of Monoid?
+
+
 
 > instance F.Foldable Tree where
 >   foldMap f EmptyTree = mempty
