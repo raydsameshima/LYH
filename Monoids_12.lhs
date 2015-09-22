@@ -218,14 +218,52 @@ wrapping
   Just "Judy and Mary"
 
 But what if the type of the contents of the Maybe is not an instance of Monoid?
+...one thing we can do is discard the second value and keep the first one.
+For this purpose, the 
+  First a
+exists:
+  newtype First a = First { getFirst :: Maybe a }
+    deriving (Eq, Ord, Read, Show)
+  instance Monoid (First a) where
+    mempty = First Nothing
+    First (Just x) `mappend` _ = First (Just x)
+    First Nothing `mappend` x = x
 
+First is useful when we have a bunch of Maybe values and just want to know if any of them is a Just.
+  *Monoids_12> mconcat . map First $ [Nothing, Just 9, Just 10]
+  First {getFirst = Just 9}
 
+If we want a monoid on Maybe a such that the second parameter is kept if both parameters of mappend are Just values, Data.Monoid provides the Last a type, which works like First a, but the last non-vanishing value is kept when mappending and using mconcat:
+  *Monoids_12> mconcat . map Last $ [Nothing, Just 9, Just 10, Nothing]
+  Last {getLast = Just 10}
+
+Folding with Monoids
+...there are so many data structures that work nicely with folds, the Foldable type class was introduced.
+
+One way to make a type constructor an instance of Foldable is to just directly implement foldr for it.
+But another, often much easier way, is to implement the foldMap function, which is also a part of the Foldable type class.
+The foldMap function has the following type:
+  foldMap :: (Monoid m, Foldable t) => (a -> m) -> t a -> m
+Its first parameter is a function that takes a value of the type that our foldable structure contains (denoted here with a) and returns a monoid value.
+Its second parameter is a foldable structure that contains values of type a.
+It maps that function over the foldable structure, thus producing a foldable structure that contains monoid values.
+Then, by doing mappend between those monoid values, it joints them all into a single monoid value.
+This function may sound kind of odd at the moment, but you'll see that it's our type to be made an instance of Foldable!
+So if we just implement foldMap for some type, we get foldr and foldl on that type for free.
+
+This is how we make Tree an instance of Foldable:
 
 > instance F.Foldable Tree where
 >   foldMap f EmptyTree = mempty
->   foldMap f (Node x left right) =
->     f x `mappend` F.foldMap f left `mappend` F.foldMap f right
->
+>   foldMap f (Node x left right) = F.foldMap f left `mappend`
+>                                   f x              `mappend`
+>                                   F.FoldMap f right
+
+  instance F.Foldable Tree where
+    foldMap f EmptyTree = mempty
+    foldMap f (Node x left right) =
+      f x `mappend` F.foldMap f left `mappend` F.foldMap f right
+
 > testTree = Node 5
 >              (Node 3
 >                 (Node 1 EmptyTree EmptyTree)
@@ -235,4 +273,14 @@ But what if the type of the contents of the Maybe is not an instance of Monoid?
 >                 (Node 8 EmptyTree EmptyTree)
 >                 (Node 10 EmptyTree EmptyTree)
 >              )
+
+We can also easily turn our tree into a list by doing a foldMap with
+  \x -> [x]
+function.
+By first projecting that function onto our tree, each element becomes a singleton list.
+The mappend action that takes place between all those singleton lists results in a single list that holds all of the elements that are in our tree:
+  *Monoids_12> F.foldMap (\x -> [x]) testTree
+  [5,3,1,6,9,8,10]
+  *Monoids_12> testTree 
+  Node 5 (Node 3 (Node 1 EmptyTree EmptyTree) (Node 6 EmptyTree EmptyTree)) (Node 9 (Node 8 EmptyTree EmptyTree) (Node 10 EmptyTree EmptyTree))
 
