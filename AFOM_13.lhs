@@ -14,7 +14,7 @@ In other words, how do we apply a function of a type
   a -> m b
 to a value of type m a?
 Essentially, we want this function:
-  (>>=) :: (Monad m) => ma -> (a -> m b) -> m b
+  (>>=) :: (Monad m) => m a -> (a -> m b) -> m b
 
 If we have a fancy value (i.e. a value with contexts) and a function that takes a normal value but returns a fancy value, how do we feed that fancy value into the function?
 This is the main concern when dealing with monads.
@@ -133,3 +133,47 @@ What would this look like if we hadn't made the clever choice of treating Maybe 
       Just pole2 -> case landLeft 2 pole2 of
         Nothing    -> Nothing
         Just pole3 -> landLeft 1 pole3
+
+do Notation
+  *AFOM_13> Just 3 >>= (\x -> Just (show x ++ "!"))
+  Just "3!"
+  *AFOM_13> Just 3 >>= (\x -> Just "!" >>= (\y -> Just (show x ++ y)))
+  Just "3!"
+
+In the outermost lambda, we feed Just "!" to the lambda \y -> Just (show x ++ y).
+x is still 3, because we got it from the outer lambda.
+
+do Notation allow us to write
+  foo :: Maybe String
+  foo = do
+    x <- Just 3
+    y <- Just "!"
+    Just (show x ++ y)
+This is a sugar syntax of
+  foo :: Maybe String
+  foo = do
+    Just 3   >>= (\x ->
+    Just "!" >>= (\y ->
+    Just (show x ++ y)))
+Using Applicative style (see http://d.hatena.ne.jp/kazu-yamamoto/20101211/1292021817),
+  Prelude Control.Applicative> ((++ "!") . show) <$> Just 3
+  Just "3!"
+
+do expressions are just different syntax for chaining monadic values.
+
+  *AFOM_13 Control.Applicative> Just 9 >>= (\x -> Just (x >8))
+  Just True
+
+We can rewrite this in do notation:
+  
+  marySue = do
+    x <- Just 9
+    Just (x > 8)
+
+Comparing these two versions, it's easy to see why the result of the whole monadic value is the result of the last monadic value in the do expression with all the previous ones chained into it.
+Or using Applicative,
+
+  *AFOM_13 Control.Applicative> (> 8) <$> Just 9
+  Just True
+
+When to use do notation and when to explicitly use (>>=) is up to you.
