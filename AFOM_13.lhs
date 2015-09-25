@@ -111,3 +111,25 @@ Banana on a Wire
 
 > banana :: Pole -> Maybe Pole
 > banana _ = Nothing
+
+  *AFOM_13> return (0,0) >>= landLeft 1 >>= landRight 1 >>= banana >>= landRight 2 
+  Nothing
+
+Instead of making functions that ignore their input and just return a predetermined monadic value, we can use the (>>) function:
+  *AFOM_13> return (0,0) >>= landLeft 1 >>= landRight 1 >> Nothing >>= landLeft (-1)
+  Nothing
+  *AFOM_13> return (0,0) >>= landLeft 2
+  Just (2,0)
+  *AFOM_13> it >> return (1,1) >>= landRight 2
+  Just (1,3)
+
+What would this look like if we hadn't made the clever choice of treating Maybe value as values with a failure context and feeding them to function?
+
+  routine :: Maybe Pole
+  routine = case landLeft 1 (0,0) of
+    Nothing    -> Nothing
+    Just pole1 -> case landRight 4 pole1 of
+      Nothing    -> Nothing
+      Just pole2 -> case landLeft 2 pole2 of
+        Nothing    -> Nothing
+        Just pole3 -> landLeft 1 pole3
