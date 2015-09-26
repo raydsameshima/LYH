@@ -177,3 +177,29 @@ Or using Applicative,
   Just True
 
 When to use do notation and when to explicitly use (>>=) is up to you.
+
+Pattern Matching and Failure
+
+> justH :: Maybe Char
+> justH = do
+>   (x:xs) <- Just "hello"
+>   return x
+
+If the matching falls through all the patterns for a given function, an error is thrown, and the program crashes.
+On the other hand, failed pattern matching in let expressions results in an error being produced immediately, because the mechanism of falling thorough pattern isn't present in let expressions.
+
+When pattern matching fails in a do expression, the fail function (part of the Monad type class) enables it to result in a failure in the context of the current monad, instead of making the program crash.
+  fail :: (Monad m) => String -> m a
+  fail msg = error msg
+
+> wopwop :: Maybe Char
+> wopwop = do
+>   (x:xs) <- Just ""
+>   return x
+
+The pattern matching fails, so the effect is the same as if the whole line with the pattern were replaced with a Nothing:
+  *AFOM_13> wopwop 
+  Nothing
+The failed pattern matching has caused a failure within the context of our monad instead of causing a program-wide failure, which is pretty neat.
+
+The List Monad
