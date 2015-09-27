@@ -36,7 +36,9 @@ Well, it must take into account the context of that monadic value.
 
 In this case, (>>=) would take a Maybe a value and a function of type a -> Maybe b, and somehow apply the function to the Maybe a.
 
+
 > applyMaybe :: Maybe a -> (a -> Maybe b) -> Maybe b
+> -- (>>=) :: (Monad m) => m a -> (a -> m b) -> m b
 > applyMaybe Nothing f = Nothing
 > applyMaybe (Just x) f = f x
 
@@ -144,17 +146,21 @@ In the outermost lambda, we feed Just "!" to the lambda \y -> Just (show x ++ y)
 x is still 3, because we got it from the outer lambda.
 
 do Notation allow us to write
+
   foo :: Maybe String
   foo = do
     x <- Just 3
     y <- Just "!"
     Just (show x ++ y)
+
 This is a sugar syntax of
+
   foo :: Maybe String
   foo = do
     Just 3   >>= (\x ->
     Just "!" >>= (\y ->
     Just (show x ++ y)))
+
 Using Applicative style (see http://d.hatena.ne.jp/kazu-yamamoto/20101211/1292021817),
   Prelude Control.Applicative> ((++ "!") . show) <$> Just 3
   Just "3!"
@@ -200,6 +206,63 @@ When pattern matching fails in a do expression, the fail function (part of the M
 The pattern matching fails, so the effect is the same as if the whole line with the pattern were replaced with a Nothing:
   *AFOM_13> wopwop 
   Nothing
+
 The failed pattern matching has caused a failure within the context of our monad instead of causing a program-wide failure, which is pretty neat.
 
 The List Monad
+A value like 5 is deterministic - it has only one result, and we know exactly what it is. 
+On the other hand, a value like
+  [3,8,9]
+contains several results, so we can view it as one value that is actually many value at the same time.
+Using lists as applicative functors showcases this nondeterministic nicely:
+  Prelude> (*) <$> [1,2,3] <*> [10,100,1000]
+  [10,100,1000,20,200,2000,30,300,3000]
+
+All the possible combinations of multiplying elements from the left list with elements from the right list are included in the resulting list.
+When dealing with nondeterminism, there are many choices that we can make, so we just try all of them.
+This means the result is a nondeterministic value as well, but it has many more results.
+
+This context of nondeterministic translates to monads very nicely.
+Here's what the Monad instance for lists looks like:
+
+  instance Monad [] where
+    return x = [x]
+    xs >>= f = concat (map f xs)
+    fail _   = []
+
+(>>=) is about taking a value with a context (a monadic value) and feeding it to a function that takes a normal value and returns that has context.
+If that function just produced a normal value instead of one with a context,
+(>>=) wouldn't be so useful - after one use, the context would be lost.
+Let's try feeding a nondeterministic value to a function:
+
+  Prelude> [3,4,5] >>= \x -> [x,-x]
+  [3,-3,4,-4,5,-5]
+
+To see how this achieved, we can just follow the implementation.
+First, we start with the list:
+  [3,4,5]
+Then we map the lambda (\x -> [x,-x]) over it:
+  [[3,-3],[4,-4],[5,-5]]
+Finally, we just flatten the list:
+  [3,-3,4,-4,5,-5]
+
+Nondeterminism also includes support for failure; [] signifies the absence of a result.
+  Prelude> [] >>= \x -> ["bad", "mad", "rad"]
+  []
+  Prelude> [1,2,3] >>= \x -> []
+  []
+
+Just as with Maybe value, we can chain several lists with (>>=), propagating the nondeterminism:
+  Prelude> [1,2] >>= \n -> ['a','b'] >>= \ch -> return (n, ch)
+  [(1,'a'),(1,'b'),(2,'a'),(2,'b')]
+
+Here is the previous expression rewritten in do notation:
+
+  listOfTuples = do
+    n  <- [1,2]
+    ch <- ['a', 'b']
+    return (n, ch)
+
+This makes it a bit more obvous that n takes on every value from [1,2] and ch takes on every value from ['a', 'b'].
+
+do Notation and List Comprehensions
