@@ -4,6 +4,8 @@ A FISTFUL OF MONADS
 
 > module AFOM_13 where
 
+> import Control.Monad (guard)
+
 In this chapter, you'll learn about monads, which are just beefed-up applicative functors, much like applicative functors are beefed-up functors.
 
 Upgrading Our Applicative Functors
@@ -266,3 +268,87 @@ Here is the previous expression rewritten in do notation:
 This makes it a bit more obvous that n takes on every value from [1,2] and ch takes on every value from ['a', 'b'].
 
 do Notation and List Comprehensions
+  Prelude> [1,2] >>= \n -> ['a', 'b'] >>= \ch -> return (n,ch)
+  [(1,'a'),(1,'b'),(2,'a'),(2,'b')]
+  Prelude> [(n,ch) | n <- [1,2], ch <- "ab"]
+  [(1,'a'),(1,'b'),(2,'a'),(2,'b')] 
+  
+  Prelude> [1,2] >>= \n -> "ab" >>= \ch -> return (n,ch)
+  [(1,'a'),(1,'b'),(2,'a'),(2,'b')]
+
+In fact, list comprehensions are just syntax sugar for using lists as monads.
+In the end, list comprehensions and lists in do notation translate to using (>>=) to do computations that feature nondeterminism.
+
+MonadPlus and the guard Function
+List comprehensions allow us to filter our output:
+  Prelude> [x | x <- [1..80],'7' `elem` show x]
+  [7,17,27,37,47,57,67,70,71,72,73,74,75,76,77,78,79]
+
+To see how filtering in list comprehensions translates to the list monad, we need to check out the guard function and the MonadPlus type class.
+The MonadPlus type class is for monads that can also act as monoids.
+
+  class Monad m => MonadPlus m where
+    mzero :: m a
+    mplus :: m a -> m a -> m a
+
+mzero is synonymous with mempty from the Monoid type class, and mplus corresponds to mappend.
+Because lists are monoids as well as monads, they can be made an instance of this type class:
+
+  instance MonadPlus [] where
+    mzero = []
+    mplus = (++)
+
+The guard function is defined like this:
+
+  guard :: (MonadPlus m) => Bool -> m ()
+  guard True  = return ()
+  guard False = mzero
+
+  Prelude Control.Monad> :info guard 
+  guard :: MonadPlus m => Bool -> m ()  -- Defined in ‘Control.Monad’
+
+  *AFOM_13 Control.Monad> guard (5>2) :: Maybe ()
+  Just ()
+  *AFOM_13 Control.Monad> guard (5>22) :: Maybe ()
+  Nothing
+  *AFOM_13 Control.Monad> guard (5>22) :: [()]
+  []
+  *AFOM_13 Control.Monad> guard (5>2) :: [()]
+  [()]
+
+In the list monad, we use it to filter out nondeterministic computations:
+  *AFOM_13 Control.Monad> [1..80] >>= (\x -> guard ('7' `elem` show x) >> return x)
+  [7,17,27,37,47,57,67,70,71,72,73,74,75,76,77,78,79]
+
+How does guard achieve this?
+
+  *AFOM_13 Control.Monad> guard (5>2) >> return "cool" ::[String]
+  ["cool"]
+  *AFOM_13 Control.Monad> guard (5>22) >> return "cool" ::[String]
+  []
+
+  *AFOM_13 Control.Monad> guard (5>2) >> return "cool" :: Maybe String
+  Just "cool"
+  *AFOM_13 Control.Monad> guard (5>22) >> return "cool" :: Maybe String
+  Nothing
+
+If guard succeeds, the result contained within it is an empty tuple.
+So then we use (>>) to ignore that empty tuple and present something else as the result.
+However, if guard fails, then so will the return later on, because feeding an empty list to a function with (>>=) always results in an empty list.
+guard basically says, 
+  "If this Boolean is False, then produce a failure right here. 
+  Otherwise, make a successful value that has a dummy result of () inside it."
+All this does is to allow the computation to continue.
+
+Here is the previous example rewritten in do notation:
+
+> sevensOnly = do
+>   x <- [1..80]
+>   guard ('7' `elem` show x)
+>   return x
+
+  *AFOM_13 Control.Monad> sevensOnly 
+  [7,17,27,37,47,57,67,70,71,72,73,74,75,76,77,78,79]
+
+So filtering in list comprehensions is the same as using guard.
+
