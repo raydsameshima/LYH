@@ -351,4 +351,51 @@ Here is the previous example rewritten in do notation:
   [7,17,27,37,47,57,67,70,71,72,73,74,75,76,77,78,79]
 
 So filtering in list comprehensions is the same as using guard.
+And again, the list comprehensions are syntax sugar for list monads.
 
+A Knight's Quest
+We want to find out if the knight can reach a certain position in 3 moves.
+
+> type Column = Int
+> type Row    = Int
+> type KnightPos = (Column, Row)
+
+> moveKnight :: KnightPos -> [KnightPos]
+> moveKnight (c, r) = do
+>  (c', r') <- [(c+2,r-1),(c+2,r+1),(c-2,r-1),(c-2,r+1)
+>              ,(c+1,r-2),(c+1,r+2),(c-1,r-2),(c-1,r+2)
+>              ]
+>  guard (c' `elem` [1..8] && r' `elem` [1..8])
+>  return (c',r')
+
+I prefer sugar:
+
+> moveKnight' :: KnightPos -> [KnightPos]
+> moveKnight' (c,r) = filter onBoard nextStep
+>   where onBoard (c,r) = c `elem` [1..8] && r `elem` [1..8]
+>         nextStep = [(c+2,r-1),(c+2,r+1),(c-2,r-1),(c-2,r+1)
+>                    ,(c+1,r-2),(c+1,r+2),(c-1,r-2),(c-1,r+2)
+>                    ]
+
+> in3 start = return start >>= moveKnight' >>= moveKnight' >>= moveKnight'
+
+This is the same as:
+
+> in3' :: KnightPos -> [KnightPos]
+> in3' start = do
+>   first  <- moveKnight' start
+>   second <- moveKnight' first
+>   moveKnight' second
+
+> canReachIn3 :: KnightPos -> KnightPos -> Bool
+> canReachIn3 start end = end `elem` in3 start
+
+Monad Laws
+Left Identity
+(return x >> f) is the same damn thing as (f x).
+
+Right Identity
+(m >>= return) is no different than just (m).
+
+Associativity
+((m >>= f) >>= g) is just like doing (m >>= (\x -> f x >>= g).
