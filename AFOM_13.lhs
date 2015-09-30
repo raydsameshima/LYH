@@ -394,6 +394,14 @@ Monad Laws
 Left Identity
 (return x >> f) is the same damn thing as (f x).
 
+  > return 3 >>= (\x -> Just (x+10000))
+  Just 10003
+  > (\x -> Just (x+10000)) 3
+  Just 10003
+
+  > Just (+10000) <*> return 3
+  Just 10003
+
 Right Identity
 (m >>= return) is no different than just (m).
 
