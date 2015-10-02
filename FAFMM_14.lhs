@@ -5,5 +5,48 @@ For A Few Monads More
 
 > module FAFMM_14 where
 
+> import Data.Monoid 
+
 Writer? I Hardly Knew Her!
+
+... we might want to equip our value with string that explain what's going on, probably for debugging purposes.
+
+> isBigGang :: Int -> (Bool, String)
+> isBigGang x = (x > 9, "Compared gang size to 9.")
+
+Now what if we already have a value that has a long string attached to it, such as (3, "Smallish gang."), and we want to feed it to isBigGang?
+
+> -- applyLog :: (a, String) -> (a -> (b, String)) -> (b, String)
+> -- applyLog :: (a, [c]) -> (a -> (b, [c])) -> (b, [c])
+> -- applyLog (x, log) f = let (y, newLog) = f x
+> --                       in  (y, log ++ newLog)
+
+  > applyLog (3, "this is a test. ") isBigGang 
+  (False,"this is a test. Compared gang size to 9.")
+
+  > applyLog ("Tobin", "Got outlaw name.") (\x -> (length x, "applied length."))
+  (5,"Got outlaw name.applied length.")
+  > applyLog it isBigGang 
+  (False,"Got outlaw name.applied length.Compared gang size to 9.")
+
+Monoids to Rescue
+
+Right now, applyLog takes values of type (a, String), but is there a reason that the log must be a String?
+It uses (++) to append the logs, so wouldn't this work on any kind of list, not just a list of characters?
+
+  applyLog :: (a, [c]) -> (a -> (b, [c])) -> (b, [c])
+
+Now the log is a list.
+Would this work for bytesrings?
+There's no reason it shouldn't.
+However, the type we have now works only for lists.
+
+Both lists and bytestrings are monoids, i.e. both are instances of the Monoid type class, which means that they implement the mappend function.
+
+Now our applyLog can work for any monoid, any Monoid type class instance:
+
+> applyLog :: (Monoid m) => (a,m) -> (a -> (b,m)) -> (b,m)
+> applyLog (x, log) f = let (y, newLog) = f x
+>                       in  (y, log `mappend` newLog)
+
 
