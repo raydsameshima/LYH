@@ -16,10 +16,10 @@ Writer? I Hardly Knew Her!
 
 Now what if we already have a value that has a long string attached to it, such as (3, "Smallish gang."), and we want to feed it to isBigGang?
 
-> -- applyLog :: (a, String) -> (a -> (b, String)) -> (b, String)
-> -- applyLog :: (a, [c]) -> (a -> (b, [c])) -> (b, [c])
-> -- applyLog (x, log) f = let (y, newLog) = f x
-> --                       in  (y, log ++ newLog)
+ applyLog :: (a, String) -> (a -> (b, String)) -> (b, String)
+ applyLog :: (a, [c]) -> (a -> (b, [c])) -> (b, [c])
+ applyLog (x, log) f = let (y, newLog) = f x
+                       in  (y, log ++ newLog)
 
   > applyLog (3, "this is a test. ") isBigGang 
   (False,"this is a test. Compared gang size to 9.")
@@ -49,4 +49,8 @@ Now our applyLog can work for any monoid, any Monoid type class instance:
 > applyLog (x, log) f = let (y, newLog) = f x
 >                       in  (y, log `mappend` newLog)
 
+  (x, log) `applyLog` f = let (y, newLog = f x
+                          in  (y, log `mappend` newLog)
+
+Because the accompanying 
 
