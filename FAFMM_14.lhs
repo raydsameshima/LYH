@@ -156,7 +156,7 @@ Instead of this do expression, we could have also written this
 do-notation desugar:
 (http://qiita.com/saltheads/items/6025f69ba10267bbe3ee)
 1.  do { m1 }            ==> m1
-2.  do { m1, m2 }        ==> m1 >> do { m1 }
+2.  do { m1; m2 }        ==> m1 >> do { m2 }
 3.  do { let s1; m1 s1 } ==> let s1 in do { m1 s1 }
 3'. do { let s1; m1 s1 } ==> do { m1 s1 } where s1
 4.  do { x <- m1; m2 x } ==> m1 >>= (\x -> do { m2 x })
@@ -168,14 +168,61 @@ do-notation desugar:
 8. (\x -> f x)           ==> f
 
 Let us rewrite above do-notation:
+Before to do, let's review the functor, applicative and monad:
+
+  *FAFMM_14> :info Functor
+  class Functor (f :: * -> *) where
+    fmap :: (a -> b) -> f a -> f b
+    (<$) :: a -> f b -> f a
+
+  *FAFMM_14> :info Applicative
+  class Functor f => Applicative (f :: * -> *) where
+    pure :: a -> f a
+    (<*>) :: f (a -> b) -> f a -> f b
+    (*>) :: f a -> f b -> f b
+    (<*) :: f a -> f b -> f a  
+
+  *FAFMM_14> :info Monad
+  class Monad (m :: * -> *) where
+    (>>=) :: m a -> (a -> m b) -> m b
+    (>>) :: m a -> m b -> m b -- "then"
+    return :: a -> m a
+    fail :: String -> m a
 
 > gcd'' :: Int -> Int -> Writer [String] Int
 > gcd'' a b
+>   | b == 0 = tell ["Finished with " ++ show a] 
+>              >> (return a) 
+>   | otherwise 
+>            = tell [show a ++ " mod " ++ 
+>                    show b ++ " = " ++ 
+>                    show (a `mod` b)
+>                   ]
+>              >> (gcd'' b (a `mod` b))
+
+As a consequence, it is not so readable.
+
+Inefficient List Construction
+When using the Writer monad, we need to be careful which monoid to use, because using lists can sometimes turn out to be very slow.
+
+In our gcd' function, the logging is fast because the list appending ends up looking like this:
+  a ++ (b ++ (c ++ (d ++ (e ++ f))))
+A list is a data structure that's constructed from left to right.
+This is efficient, because we first fully construct the left part of a list and only then add a longer list on the right.
+But if we're not careful, using the Writer monad can produce list appending that looks like this:
+  ((((a ++ b) ++ c) ++ d) ++ e) ++ f
+
+The following function works like gcd', but in logs stuff in reverse.
+First, it produces the log for the rest of the procedure, and then it adds the current step to the end of the log:
+  *FAFMM_14> :type tell
+  tell :: MonadWriter w m => w -> m ()
+
+> gcdReverse :: Int -> Int -> Writer [String] Int
+> gcdReverse a b
 >   | b == 0 = do
->       tell ["Finished with " ++ show a]
+>       tell["Finished with " ++ show a]
 >       return a
 >   | otherwise = do
->       tell [show a ++ " mod " ++ show b ++ " = " ++ show (a `mod` b)]
->       gcd'' b (a `mod` b)
-
-
+>       result <- gcdReverse b (a `mod` b)
+>       tell [show a ++ " mod " ++ show b ++ " = " ++ show (a `mod` b)]  
+>       return result
