@@ -26,12 +26,14 @@ Now what if we already have a value that has a long string attached to it, such 
  applyLog (x, log) f = let (y, newLog) = f x
                        in  (y, log ++ newLog)
 
-  > applyLog (3, "this is a test. ") isBigGang 
+  *> applyLog (3, "this is a test. ") isBigGang 
   (False,"this is a test. Compared gang size to 9.")
+  *> (30, "This is a really big number! ") `applyLog` isBigGang 
+  (True,"This is a really big number! Compared gang size to 9.")
 
-  > applyLog ("Tobin", "Got outlaw name.") (\x -> (length x, "applied length."))
+  *> applyLog ("Tobin", "Got outlaw name.") (\x -> (length x, "applied length."))
   (5,"Got outlaw name.applied length.")
-  > applyLog it isBigGang 
+  *> applyLog it isBigGang 
   (False,"Got outlaw name.applied length.Compared gang size to 9.")
 
 Monoids to Rescue
