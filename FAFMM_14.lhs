@@ -228,3 +228,55 @@ First, it produces the log for the rest of the procedure, and then it adds the c
 >       result <- gcdReverse b (a `mod` b)
 >       tell [show a ++ " mod " ++ show b ++ " = " ++ show (a `mod` b)]  
 >       return result
+
+  *FAFMM_14> runWriter $ gcd'' 8 3
+  (1,["8 mod 3 = 2","3 mod 2 = 1","2 mod 1 = 0","Finished with 1"])
+
+  *FAFMM_14> runWriter $ gcdReverse  8 3
+  (1,["Finished with 1","2 mod 1 = 0","3 mod 2 = 1","8 mod 3 = 2"])
+
+Let's follow this line by line:
+  gcdReverse 8 3
+  = do result <- gcdReverse 3 2
+       tell ["8 mod 3 = 2"]
+       return result
+      
+  gcdReverse 3 2
+  = do result <- gcdReverse 2 1
+       tell []
+       return result
+      
+  gcdReverse 2 1
+  = do result <- gcdReverse 1 0
+                 = do tell ["Finished with 1"]
+                      return 1
+
+THIS FUNCTION IS INEFFICIENT BECAUSE IT ENDS UP ASSOCIATING THE USE OF ++ TO THE LEFT INSTEAD OF TO THE RIGHT.
+Let's desugar gcdReverse:
+do-notation desugar:
+(http://qiita.com/saltheads/items/6025f69ba10267bbe3ee)
+1.  do { m1 }            ==> m1
+2.  do { m1; m2 }        ==> m1 >> do { m2 }
+3.  do { let s1; m1 s1 } ==> let s1 in do { m1 s1 }
+3'. do { let s1; m1 s1 } ==> do { m1 s1 } where s1
+4.  do { x <- m1; m2 x } ==> m1 >>= (\x -> do { m2 x })
+5.  do { x <- m1; let s = f x; m2 s } 
+                         ==> do { s <- f <$> m1 <*> m2; m3 s }
+6.  do { x <- m1; y <- m2; let s = f x y; m3 s } 
+                         ==> do { s <- f <$> m1 <*> m2; m3 s }
+7. let s1; let s2        ==> let (s1; s2)
+8. (\x -> f x)           ==> f
+
+> gcdReverse' :: Int -> Int -> Writer [String] Int
+> gcdReverse' a b
+>   | b == 0 = tell["Finished with " ++ show a]
+>              >> return a
+>   | otherwise = 
+>       gcdReverse b (a `mod` b)
+>       >>= (\result -> tell [show a ++ " mod " ++ show b ++ " = " ++ show (a `mod` b)]
+>            >> return result)
+
+Finally, I've understand these two different implementations of gcd:
+http://qiita.com/bra_cat_ket/items/451dc2977270d686e2ff
+
+
