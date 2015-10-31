@@ -279,4 +279,92 @@ do-notation desugar:
 Finally, I've understand these two different implementations of gcd:
 http://qiita.com/bra_cat_ket/items/451dc2977270d686e2ff
 
+Because lists can sometimes be inefficient when repeatedly appaneded in this manner, it's best to use a data structure that always support efficient appending.
+
+Using Difference Lists
+(see also http://qiita.com/bra_cat_ket/items/451dc2977270d686e2ff)
+While similar to a normal list, a difference list is actually a function that takes a list and prepends another list to it.
+E.g. for [1,2,3]
+  \xs -> [1,2,3] ++ xs,
+and for the normal empty list [],
+  \xs -> [] ++ xs
+are the corresponding difference lists respectly.
+
+Difference lists support efficient appending.
+When we append two normal lists with ++, the code must walk all the way to the end of the list on the left of ++, and then stick the other one there.
+Appending two difference lists can be done like so:
+  f `append` g = \xs -> f (g xs)
+If f = ("dog" ++), g = ("meat" ++), then the right hand side becomes
+  \xs -> "dog" ++ ("meat" ++ xs)
+
+Let's make a newtype wrapper for difference lists so that we can easily give them monoid instances:
+
+> newtype DiffList a = DiffList { getDiffList :: [a] -> [a] }
+
+Converting are relevant:
+
+> toDiffList :: [a] -> DiffList a
+> toDiffList xs = DiffList (xs ++)
+> fromDiffList :: DiffList a -> [a]
+> fromDiffList (DiffList f) = f []
+
+Here is the Monoid instance
+
+> instance Monoid (DiffList a) where
+>   mempty = DiffList (\xs -> [] ++ xs)
+>   (DiffList f) `mappend` (DiffList g) = DiffList (\xs -> f (g xs))
+
+Note that mempty is just the id, and mappend is just function composition.
+
+Now we can increase the efficiency of our gcdReverse by making it use difference lists:
+
+> fasterGcdReverse :: Int -> Int -> Writer (DiffList String) Int
+> fasterGcdReverse a b
+>   | b == 0 = do
+>       tell (toDiffList ["Finished with " ++ show a])
+>       return a
+>   | otherwise = do
+>       result <- fasterGcdReverse b (a `mod` b)
+>       tell (toDiffList [show a ++ " mod " 
+>                                ++ show b 
+>                                ++ " = " 
+>                                ++ show (a `mod` b)
+>                        ]
+>            )
+>       return result
+
+We just needed to change the type of the monoid from [String] to DiffList String and then when using tell, convert our normal lists into difference lists with toDiffList.
+  *> mapM_ putStrLn . fromDiffList . snd . runWriter $ fasterGcdReverse 110 34
+  Finished with 2
+  8 mod 2 = 0
+  34 mod 8 = 2
+  110 mod 34 = 8
+
+Comparing Performance
+To get a feel for just how much difference lists may improve your performance, consider the following function.
+It just counts down from some number to zero but produces its log in reverse, like gcdReverse, so that the numbers in the log will actually be counted up.
+
+> finalCountDown :: Int -> Writer (DiffList String) ()
+> finalCountDown 0 = do
+>   tell (toDiffList ["0"])
+> finalCountDown x = do
+>   finalCountDown (x-1)
+>   tell (toDiffList [show x])
+
+> slowerFinalCountDown :: Int -> Writer [String] ()
+> slowerFinalCountDown 0 = do
+>   tell ["0"]
+> slowerFinalCountDown x = do
+>   slowerFinalCountDown (x-1)
+>   tell [show x]
+
+By using :set +s, we can estimate the time and memory:
+slowerFinalCountDown takes
+  5000
+  (3.23 secs, 1059636144 bytes)
+but finalCountDown does
+  5000
+  (0.16 secs, 28076584 bytes)
+Of course, this is not the proper and scientific way to test the speed of our programs, however, we were able to see that, in this case, using difference lists starts producing results immediately, whereas normal lists takes forever.
+
 
