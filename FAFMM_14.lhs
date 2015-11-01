@@ -6,11 +6,16 @@ For A Few Monads More
 For do-notation desugar:
 http://qiita.com/saltheads/items/6025f69ba10267bbe3ee
 
-
 > module FAFMM_14 where
 > import Data.Monoid 
 > import Control.Monad.Writer
 > import Control.Applicative
+
+import Control.Monad.Instances
+  FAFMM_14.lhs:13:3: Warning:
+  Module ‘Control.Monad.Instances’ is deprecated:
+  This module now contains no instances and will be removed in the future
+  Ok, modules loaded: FAFMM_14.
 
 Writer? I Hardly Knew Her!
 
@@ -367,4 +372,75 @@ but finalCountDown does
   (0.16 secs, 28076584 bytes)
 Of course, this is not the proper and scientific way to test the speed of our programs, however, we were able to see that, in this case, using difference lists starts producing results immediately, whereas normal lists takes forever.
 
+Reader? Ugh, Not This Joke Again
+In Chapter 11, we saw that the function type
+  (->) r
+is an instance of Functor.
+Mapping a function f over another function g will make a function that the same thing as g, applies g to it, and then applies f to that result.
+  Prelude> (fmap (*5) (+3)) 8
+  55 
+  = (8+3)*5
+  
+  Prelude Control.Applicative> let f = (+) <$> (*2) <*> (+10)
+  Prelude Control.Applicative> f 3
+  19
+  = ((+) (3+10) (3*2))
 
+Functions As Monads
+Not only is the function type (->) r a functor and an applicative functor, but it's also a monad.
+Just like other monadic values that you've met so far, a function can also be considered a value with a context.
+The context for functions is that value is not present yet and that we need to apply that function to something in order to get its result.
+  
+  instance Applicative ((->) r) where
+    pure x = (\_ -> x)
+    f <*> g = \x -> f x (g x)
+
+  instance Monad ((->) r) where
+    return x = \_ -> x
+    h >>= f  = \w -> f (h w) w
+
+The implementations for (>>=) (bind) may seem a bit cryptic, but it's really not all that complicated.
+When we use  (>>=) to feed a monadic value to a function, the result is always a monadic value.
+So, in this case, when we feed a function to another function, the result is a function as well.
+That's why the result starts off as a lmabda.
+
+All of the implementations of (>>=) so far somehow isolated the result from the monadic value and then applied the function f to that result.
+The same thing happens here.
+To get the result from a function, we need to apply it to something, which is why we use (h w) here, and then we apply f to that.
+f returns a monadic value, which is a function in our case, so we aplly it to w as well.
+
+The Reader Monad
+If you don't get how (>>=) works at this point, don't worry.
+
+> addStuff :: Int -> Int
+> addStuff = do
+>   a <- (*2)
+>   b <- (+10)
+>   return (a+b)
+  
+  *FAFMM_14 Control.Applicative> addStuff 3
+  19
+
+This is the same thing as the applicative expression that we wrote earlier, but now it relies on functions before being monads.
+A do expression always results in a monadic value, and this one is no different.
+The result of this monadic value is a function.
+It takes a number, then (*2) is applied to that number, and the result becomes a.
+(+10) is applied to the same number that (*2) was applied to, and the result becomes b.
+return, as in other monads, doesn't have any effect but to make a monadic value that presents some results.
+
+Both (*2) and (+10) are applied to the number 3 in this case.
+return (a+b) does as as well, but it ignores that value and always presents a+b as the result.
+For this reason, the function monad is also called the reader monad.
+All the functions read from a common source.
+To make this even clearer, we can rewrite addStuff like so:
+
+> addStuff' :: Int -> Int
+> addStuff' x = let
+>   a = (*2) x
+>   b = (+10) x
+>   in a+b
+
+You see that the reader monad allows us to treat functions as values with a context.
+We can act as if we already know what the functions will return.
+It does this by gluing functions together into one function and then giving that function's parameter to all of the functions that compose it.
+So, if we have a lot of functions that are all just missing one parameter, and they will eventually be applied to the same thing, we can use the reader monad to sort of extract their future results, and the (>>=) implementation will make sure that it all works out.
