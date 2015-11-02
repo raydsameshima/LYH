@@ -370,17 +370,24 @@ slowerFinalCountDown takes
 but finalCountDown does
   5000
   (0.16 secs, 28076584 bytes)
+
 Of course, this is not the proper and scientific way to test the speed of our programs, however, we were able to see that, in this case, using difference lists starts producing results immediately, whereas normal lists takes forever.
 
 Reader? Ugh, Not This Joke Again
 In Chapter 11, we saw that the function type
   (->) r
 is an instance of Functor.
+  instance Functor ((->) r) where
+    fmap = (.)
 Mapping a function f over another function g will make a function that the same thing as g, applies g to it, and then applies f to that result.
   Prelude> (fmap (*5) (+3)) 8
   55 
   = (8+3)*5
-  
+We've seen that functions are applicative functors:
+  instance Applicative ((->) r) where
+    pure x = (\_ -> x)
+    f <*> g = \x -> f x (g x)
+   
   Prelude Control.Applicative> let f = (+) <$> (*2) <*> (+10)
   Prelude Control.Applicative> f 3
   19
@@ -390,11 +397,6 @@ Functions As Monads
 Not only is the function type (->) r a functor and an applicative functor, but it's also a monad.
 Just like other monadic values that you've met so far, a function can also be considered a value with a context.
 The context for functions is that value is not present yet and that we need to apply that function to something in order to get its result.
-  
-  instance Applicative ((->) r) where
-    pure x = (\_ -> x)
-    f <*> g = \x -> f x (g x)
-
   instance Monad ((->) r) where
     return x = \_ -> x
     h >>= f  = \w -> f (h w) w
