@@ -10,6 +10,7 @@ http://qiita.com/saltheads/items/6025f69ba10267bbe3ee
 > import Data.Monoid 
 > import Control.Monad.Writer
 > import Control.Applicative
+> import System.Random
 
 import Control.Monad.Instances
   FAFMM_14.lhs:13:3: Warning:
@@ -446,3 +447,42 @@ You see that the reader monad allows us to treat functions as values with a cont
 We can act as if we already know what the functions will return.
 It does this by gluing functions together into one function and then giving that function's parameter to all of the functions that compose it.
 So, if we have a lot of functions that are all just missing one parameter, and they will eventually be applied to the same thing, we can use the reader monad to sort of extract their future results, and the (>>=) implementation will make sure that it all works out.
+
+Tasteful Stateful Computations
+Haskell is a pure language, and because of that, our programs are made of functions that can't change any global state or variables; they can only do some computations and return the results.
+
+However, some problems are inherently stateful, in that they rely on some state that changes over time.
+While this isn't a problem for Haskell, these computations can be a bit tedious to model.
+That's why Haskell features the State monad, which makes dealing with stateful problems a breeze, while still keepping everything nice and pure.
+
+When we were looking at random numbers back in Chapter 9, we dealt with functions that took a random generator as a parameter and returned a random number and a new random generator.
+If we wanted to generate several random numbers, we always needed to use the random generator that a previous function returned along with its result.
+For example, to create a function that takes a StdGen and tosses a coin three times based on that generator, we did this:
+
+> threeCoins :: StdGen -> (Bool, Bool, Bool)
+> threeCoins gen =
+>   let (firstCoin, newGen)   = random gen
+>       (secondCoin, newGen') = random newGen
+>       (thirdCoin, newGen'') = random newGen'
+>   in  (firstCoin, secondCoin, thirdCoin)
+
+  *FAFMM_14> threeCoins (mkStdGen 21)
+  (True,True,True)
+
+This function takes a generator gen, and then random gen returns a Bool value alogn with a new gerator.
+To throw the second coin, we use the new generator, and so on.
+
+In most other languages, we wouldn't need to return a new generator along with a random number.
+We could just modify the existing one!
+But since Haskell is pure, we can't do that, so we need to take some state, make a result from it and a new state, and then use that new state to generate new results.
+
+You would think that to avoid manually dealing with stateful computations in this way, we would need to give up the purity of Haskell.
+Well, we don't have to, since there's a special little monad called State monad that handles all this state business for us, without impacting any of the purity that makes Haskell programming so cool.
+
+Stateful Computations
+To help demonstarate stateful computations, let's go ahead and give them a type.
+We'll say that a stateful computation is a function that takes some state and returns a value along with some new state.
+That function has the follwing type:
+  s -> (a, s)
+where s is the type of the state, and a is the result of the stateful computations.
+
