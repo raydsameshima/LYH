@@ -11,6 +11,7 @@ http://qiita.com/saltheads/items/6025f69ba10267bbe3ee
 > import Control.Monad.Writer
 > import Control.Applicative
 > import System.Random
+> import Control.Monad.State
 
 import Control.Monad.Instances
   FAFMM_14.lhs:13:3: Warning:
@@ -485,4 +486,89 @@ We'll say that a stateful computation is a function that takes some state and re
 That function has the follwing type:
   s -> (a, s)
 where s is the type of the state, and a is the result of the stateful computations.
+
+A function that takes a state and returns a result and a new state.
+This can be thought of as a value with a context as well.
+
+Stacks and Stones
+A stack is a data structure that contains a bunch of elements and supports exactly two operations:
+  -Pushing an element to the stack, which adds an element on the top.
+  -Popping an element off the stack, which removes from the top.
+
+We'll use a list to represent our stack, with the head of the list acting as the fop of the stack.
+To help us with our task, we'll make 2 functions:
+
+> type Stack = [Int]
+> push' :: Int -> Stack -> ((), Stack)
+> push' a xs = ((), a:xs)
+> pop' :: Stack -> (Int, Stack)
+> pop' (x:xs) = (x,xs)
+  
+  Prelude> :type ()
+  () :: ()
+We used () as the result when pushing to the stack because pushing an item onto the stack doesn't have any important result value - its main job is to change the stack.
+Let's write a small piece of code to simulate a stack using these functions.
+We'll take a stack, push 3 to it, and then pop two items, just for kicks.
+
+> stackManip' :: Stack -> (Int, Stack)
+> stackManip' stack = 
+>   let ((), newStack1) = push' 3 stack
+>       (_ , newStack2) = pop' newStack1
+> --    (a , newStack2) = pop' newStack1
+>   in  pop' newStack2
+
+Well, using the State monad will allow us to do exactly taht.
+
+> stackManip'' :: Stack -> (Int, Stack)
+> stackManip'' = do
+>   push' 3
+>   _ <- pop'
+> -- a <- pop'
+>   pop'
+
+> stackManip''' :: Stack -> (Int, Stack)
+> stackManip''' = push' 3 >> pop' >> pop'
+
+With it, we will be able to take stateful computations like these and use them without needing to manage the state manually.
+  
+The State Monad
+  newtype State s a = State {runState :: s -> (a,s)}
+A State s a is a stateful computation that manipulates a state of type s and has a result of type a.
+
+Let's check out their Monad instance:
+  instance Monad (State s) where
+    return x = State $ \s -> (x,s)
+    (State h) >>= f = State $ \s -> let (a, newState) = h s
+                                        (State g) = f a
+                                    in  g newState
+It's easy to wrap pop and push into a State wrapper:
+
+> pop :: State Stack Int
+> pop = state $ \(x:xs) -> (x,xs)
+> push :: Int -> State Stack ()
+> push a = state $ \xs -> ((), a:xs)
+
+> stackManip :: State Stack Int
+> stackManip = do
+>   push 3
+>   pop
+> -- _ <- pop
+>   pop
+
+> stackStuff :: State Stack ()
+> stackStuff = do
+>   a <- pop
+>   if a == 5
+>     then push 5
+>     else do push 3
+>             push 8
+
+> moreStack :: State Stack ()
+> moreStack = do
+>   a <- stackManip
+>   if a == 100
+>     then stackStuff
+>     else return ()
+
+Getting and Setting State
 
