@@ -3,6 +3,8 @@ FAFMM_14.lhs
 chapter 14
 For A Few Monads More
 
+mtl = A monad transfer library
+
 For do-notation desugar:
 http://qiita.com/saltheads/items/6025f69ba10267bbe3ee
 
@@ -70,7 +72,7 @@ Or using where,
 >   where (y, newLog) = f x
 >         newerLog = log `mappend` newLog
 
-Note that, even if we omit type annotation, Haskell will know it.
+Note that, even if we omit type annotation, Haskell will know it, because of append function.
 
 Because the accompanying value can now be any monoid value, we no longer need to think of the tuple as a value and a log; now we can think of it as a value with an accompanying monoid value.
 
@@ -369,7 +371,7 @@ By using :set +s, we can estimate the time and memory:
 slowerFinalCountDown takes
   5000
   (3.23 secs, 1059636144 bytes)
-but finalCountDown does
+but finalCountDown, which uses DiffList,  does
   5000
   (0.16 secs, 28076584 bytes)
 
@@ -449,6 +451,15 @@ We can act as if we already know what the functions will return.
 It does this by gluing functions together into one function and then giving that function's parameter to all of the functions that compose it.
 So, if we have a lot of functions that are all just missing one parameter, and they will eventually be applied to the same thing, we can use the reader monad to sort of extract their future results, and the (>>=) implementation will make sure that it all works out.
 
+Let us try to de-sugar:
+
+> addStuff'' :: Int -> Int
+> addStuff'' = (*2) >>= (\a -> ((+10) >>= (\b -> return (a+b))))
+
+It is much more readable to use Applicative style:
+
+> addStuff''' = (+) <$> (*2) <*> (+10)
+ 
 Tasteful Stateful Computations
 Haskell is a pure language, and because of that, our programs are made of functions that can't change any global state or variables; they can only do some computations and return the results.
 
@@ -499,8 +510,10 @@ We'll use a list to represent our stack, with the head of the list acting as the
 To help us with our task, we'll make 2 functions:
 
 > type Stack = [Int]
+
 > push' :: Int -> Stack -> ((), Stack)
 > push' a xs = ((), a:xs)
+
 > pop' :: Stack -> (Int, Stack)
 > pop' (x:xs) = (x,xs)
   
@@ -517,7 +530,7 @@ We'll take a stack, push 3 to it, and then pop two items, just for kicks.
 > --    (a , newStack2) = pop' newStack1
 >   in  pop' newStack2
 
-Well, using the State monad will allow us to do exactly taht.
+Well, using the State monad will allow us to do exactly that.
 
 > stackManip'' :: Stack -> (Int, Stack)
 > stackManip'' = do
@@ -532,15 +545,24 @@ Well, using the State monad will allow us to do exactly taht.
 With it, we will be able to take stateful computations like these and use them without needing to manage the state manually.
   
 The State Monad
+The Control.Monad.State provides a newtype that wraps stateful computations.
+
   newtype State s a = State {runState :: s -> (a,s)}
+
 A State s a is a stateful computation that manipulates a state of type s and has a result of type a.
 
 Let's check out their Monad instance:
+
   instance Monad (State s) where
     return x = State $ \s -> (x,s)
     (State h) >>= f = State $ \s -> let (a, newState) = h s
                                         (State g) = f a
                                     in  g newState
+
+Our aim with return is to take a value and make a stateful computation that always has that value as its result.
+We always present x as the result of the stateful computation, and the state is kept unchanged, because return must put a value in a minimal context, see the wrapped type in State.
+So return will make a stateful computation that presents a certain value as the result and keeps the state unchanged.
+
 It's easy to wrap pop and push into a State wrapper:
 
 > pop :: State Stack Int
