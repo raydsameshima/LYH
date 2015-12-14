@@ -102,10 +102,11 @@ case Expressions
 >                       (x:_) -> x
 
 > describeList :: [a] -> String
-> describeList ls = "The list is " 
->                     ++ case ls of []  -> "empty."
->                                   [x] -> "a singleton list."
->                                   _   -> "a longer list."
+> describeList ls = 
+>   "The list is " 
+>     ++ case ls of []  -> "empty."
+>                   [x] -> "a singleton list."
+>                   _   -> "a longer list."
 
 Since the guard is syntax sugar of case expresseion, we can write above as
 

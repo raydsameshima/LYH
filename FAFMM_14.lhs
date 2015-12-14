@@ -86,12 +86,16 @@ Because the accompanying value can now be any monoid value, we no longer need to
 
 The Writer Type
 To attach a monoid to a value, we just need to put them together in a tuple:
+
   newtype Writer w a = Writer { runWriter :: (a,w)}
+
 Its Monad instance is defined like so:
+
   instance (Monoid w) => Monad (Writer w) where
     return x = Writer (x,mempty)
     (Writer (x,v)) >>= f = let (Writer (y,v')) = f x
                            in  Writer (y,v `mappend` v')
+
 (>>=)'s implementation is essentially the same as applyLog, only now that tuple is wrapped in the Writer newtype.
 
   Control.Monad.Writer> runWriter (return 3 :: Writer [a] Int)

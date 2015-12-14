@@ -257,7 +257,7 @@ This is how we make Tree an instance of Foldable:
 >   foldMap f EmptyTree = mempty
 >   foldMap f (Node x left right) = F.foldMap f left `mappend`
 >                                   f x              `mappend`
->                                   F.FoldMap f right
+>                                   F.foldMap f right
 
   instance F.Foldable Tree where
     foldMap f EmptyTree = mempty
