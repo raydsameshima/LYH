@@ -616,6 +616,13 @@ It's easy to wrap pop and push into a State wrapper:
 >     then push 5
 >     else do push 3
 >             push 8
+  
+  *FAFMM_14> runState stackStuff [4]
+  ((),[8,3])
+  *FAFMM_14> runState stackStuff [5]
+  ((),[5])
+  *FAFMM_14> runState stackStuff [1..4]
+  ((),[8,3,2,3,4])
 
 > moreStack :: State Stack ()
 > moreStack = do
