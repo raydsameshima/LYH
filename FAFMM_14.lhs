@@ -391,7 +391,15 @@ Mapping a function f over another function g will make a function that the same 
   Prelude> (fmap (*5) (+3)) 8
   55 
   = (8+3)*5
+
+  *FAFMM_14> let (f,g) = ((*5),(+3))
+  *FAFMM_14> fmap f g $ 8
+  55
+  *FAFMM_14> f . g $ 8
+  55
+
 We've seen that functions are applicative functors:
+
   instance Applicative ((->) r) where
     pure x = (\_ -> x)
     f <*> g = \x -> f x (g x)
@@ -460,16 +468,23 @@ Let us try to de-sugar:
 > addStuff'' :: Int -> Int
 > addStuff'' = (*2) >>= (\a -> ((+10) >>= (\b -> return (a+b))))
 
+or more explicitly,
+
+> addStuff''' =  -- see chapter 13
+>   (*2)  >>= (\a ->
+>   (+10) >>= (\b ->
+>   return (a+b)))
+
 It is much more readable to use Applicative style:
 
-> addStuff''' = (+) <$> (*2) <*> (+10)
+> addStuff'''' = (+) <$> (*2) <*> (+10)
  
 Tasteful Stateful Computations
 Haskell is a pure language, and because of that, our programs are made of functions that can't change any global state or variables; they can only do some computations and return the results.
 
 However, some problems are inherently stateful, in that they rely on some state that changes over time.
 While this isn't a problem for Haskell, these computations can be a bit tedious to model.
-That's why Haskell features the State monad, which makes dealing with stateful problems a breeze, while still keepping everything nice and pure.
+That's why Haskell features the State monad, which makes dealing with stateful problems a breeze, while still keeping everything nice and pure.
 
 When we were looking at random numbers back in Chapter 9, we dealt with functions that took a random generator as a parameter and returned a random number and a new random generator.
 If we wanted to generate several random numbers, we always needed to use the random generator that a previous function returned along with its result.
@@ -485,18 +500,18 @@ For example, to create a function that takes a StdGen and tosses a coin three ti
   *FAFMM_14> threeCoins (mkStdGen 21)
   (True,True,True)
 
-This function takes a generator gen, and then random gen returns a Bool value alogn with a new gerator.
+This function takes a generator gen, and then random gen returns a Bool value along with a new generator.
 To throw the second coin, we use the new generator, and so on.
 
 In most other languages, we wouldn't need to return a new generator along with a random number.
 We could just modify the existing one!
-But since Haskell is pure, we can't do that, so we need to take some state, make a result from it and a new state, and then use that new state to generate new results.
+But since Haskell is pure, we can't modify the existing one, so we need to take some state, make a result from it and a new state, and then use that new state to generate new results.
 
 You would think that to avoid manually dealing with stateful computations in this way, we would need to give up the purity of Haskell.
 Well, we don't have to, since there's a special little monad called State monad that handles all this state business for us, without impacting any of the purity that makes Haskell programming so cool.
 
 Stateful Computations
-To help demonstarate stateful computations, let's go ahead and give them a type.
+To help demonstrate stateful computations, let's go ahead and give them a type.
 We'll say that a stateful computation is a function that takes some state and returns a value along with some new state.
 That function has the follwing type:
   s -> (a, s)
@@ -506,6 +521,8 @@ A function that takes a state and returns a result and a new state.
 This can be thought of as a value with a context as well.
 
 Stacks and Stones
+  LIFO: Last In First Out; FILO: First In Last Out
+
 A stack is a data structure that contains a bunch of elements and supports exactly two operations:
   -Pushing an element to the stack, which adds an element on the top.
   -Popping an element off the stack, which removes from the top.
@@ -514,20 +531,20 @@ We'll use a list to represent our stack, with the head of the list acting as the
 To help us with our task, we'll make 2 functions:
 
 > type Stack = [Int]
-
-> push' :: Int -> Stack -> ((), Stack)
-> push' a xs = ((), a:xs)
-
+>
 > pop' :: Stack -> (Int, Stack)
 > pop' (x:xs) = (x,xs)
-  
-  Prelude> :type ()
+>
+> push' :: Int -> Stack -> ((), Stack)
+> push' a xs = ((), a:xs)
+ 
+  Prelude> :type () -- unit
   () :: ()
 We used () as the result when pushing to the stack because pushing an item onto the stack doesn't have any important result value - its main job is to change the stack.
 Let's write a small piece of code to simulate a stack using these functions.
 We'll take a stack, push 3 to it, and then pop two items, just for kicks.
 
-> stackManip' :: Stack -> (Int, Stack)
+> stackManip' :: Stack -> (Int, Stack) -- page 315
 > stackManip' stack = 
 >   let ((), newStack1) = push' 3 stack
 >       (_ , newStack2) = pop' newStack1
@@ -542,6 +559,8 @@ Well, using the State monad will allow us to do exactly that.
 >   _ <- pop'
 > -- a <- pop'
 >   pop'
+
+or desugared version
 
 > stackManip''' :: Stack -> (Int, Stack)
 > stackManip''' = push' 3 >> pop' >> pop'
@@ -578,8 +597,17 @@ It's easy to wrap pop and push into a State wrapper:
 > stackManip = do
 >   push 3
 >   pop
-> -- _ <- pop
+> -- _ <- pop -- We didn't need to bind this pop to anything.
 >   pop
+>
+> stackManipDesugared = push 3 >> pop >> pop 
+  
+  *FAFMM_14> runState stackManipDesugared  [5,8,2,1]
+  (5,[8,2,1])
+  *FAFMM_14> runState stackManip  [5,8,2,1]
+  (5,[8,2,1])
+
+... if we want to do something a little more complicated?
 
 > stackStuff :: State Stack ()
 > stackStuff = do
