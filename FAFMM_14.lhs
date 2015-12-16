@@ -121,8 +121,8 @@ Now that we have a Monad instance, we're free to use do notation for Writer valu
 >
 > multWithLog' = (*) <$> (logNumber 3) <*> (logNumber 5)
 
-ogNumber takes a number and makes a Writer value out of it.
-Notice how we used the writer function to construct a Writer value, instea of directly using the Writer value constructor.
+logNumber takes a number and makes a Writer value out of it.
+Notice how we used the writer function to construct a Writer value, instead of directly using the Writer value constructor.
 For a monoid, we use a list of strings, and we equip the number with a singleton list that just says that we have that number.
   
   *FAFMM_14> runWriter multWithLog
@@ -130,11 +130,11 @@ For a monoid, we use a list of strings, and we equip the number with a singleton
   *FAFMM_14> runWriter multWithLog'
   (15,["Got number: 3","Got number: 5"])
 
-Someimes, we just want some monoid value to be included at some particular point.
+Sometimes, we just want some monoid value to be included at some particular point.
 For this, the tell function is useful.
 It's part of the MonadWriter type class.
 In the case of Writer, it takes a monoid value, like
-  ["this ios going on"],
+  ["this is going on"],
 and creates a Writer value hat presents the dummy value () as its result, but has the desired monoid value attached.
 When we have a monadic value that has () as its result, we don't bind it to a variable.
 
@@ -292,7 +292,7 @@ do-notation desugar:
 Finally, I've understand these two different implementations of gcd:
 http://qiita.com/bra_cat_ket/items/451dc2977270d686e2ff
 
-Because lists can sometimes be inefficient when repeatedly appaneded in this manner, it's best to use a data structure that always support efficient appending.
+Because lists can sometimes be inefficient when repeatedly appended in this manner, it's best to use a data structure that always support efficient appending.
 
 Using Difference Lists
 (see also http://qiita.com/bra_cat_ket/items/451dc2977270d686e2ff)
@@ -301,7 +301,7 @@ E.g. for [1,2,3]
   \xs -> [1,2,3] ++ xs,
 and for the normal empty list [],
   \xs -> [] ++ xs
-are the corresponding difference lists respectly.
+are the corresponding difference lists respectively.
 
 Difference lists support efficient appending.
 When we append two normal lists with ++, the code must walk all the way to the end of the list on the left of ++, and then stick the other one there.
@@ -420,12 +420,12 @@ The context for functions is that value is not present yet and that we need to a
 The implementations for (>>=) (bind) may seem a bit cryptic, but it's really not all that complicated.
 When we use  (>>=) to feed a monadic value to a function, the result is always a monadic value.
 So, in this case, when we feed a function to another function, the result is a function as well.
-That's why the result starts off as a lmabda.
+That's why the result starts off as a lambda.
 
 All of the implementations of (>>=) so far somehow isolated the result from the monadic value and then applied the function f to that result.
 The same thing happens here.
 To get the result from a function, we need to apply it to something, which is why we use (h w) here, and then we apply f to that.
-f returns a monadic value, which is a function in our case, so we aplly it to w as well.
+f returns a monadic value, which is a function in our case, so we apply it to w as well.
 
 The Reader Monad
 If you don't get how (>>=) works at this point, don't worry.
@@ -513,7 +513,7 @@ Well, we don't have to, since there's a special little monad called State monad 
 Stateful Computations
 To help demonstrate stateful computations, let's go ahead and give them a type.
 We'll say that a stateful computation is a function that takes some state and returns a value along with some new state.
-That function has the follwing type:
+That function has the following type:
   s -> (a, s)
 where s is the type of the state, and a is the result of the stateful computations.
 
@@ -608,6 +608,8 @@ It's easy to wrap pop and push into a State wrapper:
   (5,[8,2,1])
 
 ... if we want to do something a little more complicated?
+Let's say we want to pop one number off the stack, and if that number is 5, we'll just push it back on the stack and stop.
+But if the number in NOT 5, we'll push 3 and 8 back on instead.
 
 > stackStuff :: State Stack ()
 > stackStuff = do
@@ -624,6 +626,9 @@ It's easy to wrap pop and push into a State wrapper:
   *FAFMM_14> runState stackStuff [1..4]
   ((),[8,3,2,3,4])
 
+Remember that do expression result in monadic values, and with the State monad, a single do expression is also a stateful function.
+Because stackManip and stackStuff are ordinary stateful computations, we can glue them together to produce further stateful computations:
+
 > moreStack :: State Stack ()
 > moreStack = do
 >   a <- stackManip
@@ -631,5 +636,99 @@ It's easy to wrap pop and push into a State wrapper:
 >     then stackStuff
 >     else return ()
 
-Getting and Setting State
+  *FAFMM_14> runState moreStack [100,101.. 105]
+  ((),[8,3,102,103,104,105])
+  *FAFMM_14> runState moreStack [1..5]
+  ((),[2,3,4,5])
 
+Getting and Setting State
+The Control.Monad.State module provides a type class called MonadState, which features two pretty useful functions: get and put.
+For State, the get function is implemented like this
+
+  get = state $ \s -> (s,s)
+
+It just takes the current state and presents it as the result.
+
+The put function takes some state and makes a stateful function that replaces the current state with it:
+
+  put newState = state $ \s -> ((), newState)
+
+With these built in functions, we can see what the current stack is or we can replace it with a whole other stack, like so:
+
+> stackyStack :: State Stack ()
+> stackyStack = do
+>   stackNow <- get
+>   if stackNow == [1,2,3]
+>     then put [8,3,1]
+>     else put [9,2,1]
+  
+  *FAFMM_14 Control.Monad.State> runState stackyStack [1,2,3,4]
+  ((),[9,2,1])
+  *FAFMM_14 Control.Monad.State> runState stackyStack [1,2,3]
+  ((),[8,3,1])
+  *FAFMM_14 Control.Monad.State> runState stackyStack [1,2]
+  ((),[9,2,1])
+
+We can also use get and put to implement pop and push:
+
+> pop'' :: State Stack Int
+> pop'' = do
+>   (x:xs) <- get
+>   put xs
+>   return x
+>
+> push'' :: Int -> State Stack ()
+> push'' x = do
+>   xs <- get
+>   put (x:xs)
+
+We use get to get the whole stack, and then we use put to make everything but the top element the new state.
+Then we use return to present x as the result.
+For push, we just use get to get the currents stack and use put to make the set the new state as our stack, with the element x on top.
+
+It's worth examining what the type of bind (>>=) 
+
+   (>>=) :: Monad m => m a -> (a -> m b) -> m b
+
+would be if it restricted on State values:
+
+  (>>=) :: State s a -> (a -> State s b) -> State s b
+
+Well, for the State monad, the monad is actually 
+  
+  State s
+
+so if that s were different, we would be using bind (>>=) between two different monads.
+
+Randomness and the State Monad
+Every random function takes a generator and returns a random number along with a new generator, which must then be used instead of the old one if we want to generate another random number.
+The State monad makes dealing with this a lot easier.
+
+The random function has the following type:
+
+  Prelude System.Random> :type random
+  random :: (RandomGen g, Random a) => g -> (a, g)
+
+This can be seen as a stateful computation, i.e. it takes a random generator and produces a random number along with a new generator.
+So, we can wrap it in the State newtype constructor by using the state function, and then use it as a monadic value so that passing the state is handled for us:
+
+> randomSt :: (RandomGen g, Random a) => State g a
+> randomSt = state random
+
+Now, if we want to throw 3 coins, we just do the following:
+
+> threeCoins' :: State StdGen (Bool, Bool, Bool)
+> threeCoins' = do
+>   a <- randomSt
+>   b <- randomSt
+>   c <- randomSt
+>   return (a,b,c)
+
+  *FAFMM_14 System.Random> runState threeCoins' (mkStdGen 3)
+  ((True,True,False),1090583934 2103410263)
+  *FAFMM_14 System.Random> runState threeCoins' (mkStdGen 33)
+  ((True,False,True),680029187 2103410263)
+  *FAFMM_14 System.Random> runState threeCoins' (mkStdGen 333)
+  ((True,False,True),869448843 2103410263)
+
+http://qiita.com/tsukimizake774/items/9c60c9e06ebc56b648b7
