@@ -731,4 +731,38 @@ Now, if we want to throw 3 coins, we just do the following:
   *FAFMM_14 System.Random> runState threeCoins' (mkStdGen 333)
   ((True,False,True),869448843 2103410263)
 
+Examples from Qiita
 http://qiita.com/tsukimizake774/items/9c60c9e06ebc56b648b7
+やる気の問題 
+http://yukicoder.me/problems/100
+
+Thomasのやる気は、簡単に計算できる。
+締め切りまでの残りの日数をD日とし、
+残りの作業量をWとすると その日のやる気はW/D^2となる。
+そして、やる気の小数切り捨ての値が、その日の作業量になる。
+Thomasは、最終日にどれだけ作業をしないといけなくなるかが気になっている。
+最初の日に与えられた作業量Wと締め切りまでの日数Dが与えられるので
+あなたは、Thomasが最後の日にどれだけの作業量があるか計算してあげてください。
+(値の制約に気をつけてください。)
+
+> type Work = Int
+> type Day  = Int
+> type WorkState = (Work, Day)
+>
+> work :: State WorkState Work
+> work = do
+>   (workLeft, daysLeft) <- get
+>   let todaysWork = workLeft `div` (daysLeft^2)
+>   if daysLeft == 1
+>     then 
+>       return workLeft
+>     else do
+>       put (workLeft - todaysWork, daysLeft - 1) -- "renew" the state
+>       work                                      -- recursion
+>
+> howMachDoIHaveToWorkAtTheLastDay = do
+>   ws <- getLine
+>   ds <- getLine
+>   let (w,d) = (read ws, read ds)  :: (Int, Int)
+>   print $ fst $ runState work (w,d)
+
