@@ -766,3 +766,4 @@ Thomasは、最終日にどれだけ作業をしないといけなくなるか�
 >   let (w,d) = (read ws, read ds)  :: (Int, Int)
 >   print $ fst $ runState work (w,d)
 
+
