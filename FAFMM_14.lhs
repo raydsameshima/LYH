@@ -470,14 +470,19 @@ Let us try to de-sugar:
 
 or more explicitly,
 
-> addStuff''' =  -- see chapter 13
->   (*2)  >>= (\a ->
->   (+10) >>= (\b ->
->   return (a+b)))
+> addStuff''' =      -- = do
+>   (*2)  >>= (\a -> -- a <- (*2)
+>   (+10) >>= (\b -> -- b <- (+10)
+>   return (a+b)))   -- return (a+b)
 
 It is much more readable to use Applicative style:
 
 > addStuff'''' = (+) <$> (*2) <*> (+10)
+
+Let us try another bind (=<<):
+
+> addStuff''''' = (\a -> ((\b -> return (a+b)) =<< (+10))) =<< (*2)
+> addStuff'''''' = (=<<) (\a -> ((=<<) (\b -> return (a+b)) (+10))) (*2)
  
 Tasteful Stateful Computations
 Haskell is a pure language, and because of that, our programs are made of functions that can't change any global state or variables; they can only do some computations and return the results.
@@ -733,6 +738,8 @@ Now, if we want to throw 3 coins, we just do the following:
 
 Examples from Qiita
 http://qiita.com/tsukimizake774/items/9c60c9e06ebc56b648b7
+
+問題１
 やる気の問題 
 http://yukicoder.me/problems/100
 
@@ -766,4 +773,78 @@ Thomasは、最終日にどれだけ作業をしないといけなくなるか�
 >   let (w,d) = (read ws, read ds)  :: (Int, Int)
 >   print $ fst $ runState work (w,d)
 
+問題２
+a,b,c の三種の文字からなる文字列が渡される。
+この文字列から点数を生成するゲームを作れ、ただし初期状態でゲームはオフであるとし、c がオンオフを切り替えるものとする。
+またオンの時、a が+1、b が-1であるとする。
+
+> type GameValue = Int
+> type GameState = (Bool, GameValue)
+>
+> addScore :: Int -> State GameState GameValue
+> addScore i = do 
+>   (switch, score) <- get
+>   let newScore = score + i
+>   put (switch, newScore)
+>   return newScore
+>
+> toggleGame :: State GameState GameValue
+> toggleGame = do
+>   (switch, score) <- get
+>   put (not switch, score)
+>   return score
+>
+> playGame :: String -> State GameState GameValue
+> playGame [] = do
+>   (_, score) <- get
+>   return score
+>
+> playGame (x:xs) = do
+>   (switch, score) <- get
+>   case x of 
+>     'a' | switch == True -> addScore 1
+>     'b' | switch == True -> addScore (-1)
+>     'c' -> toggleGame
+>     _ -> return score
+>   playGame xs
+>
+> startState = (False, 0) :: GameState
+>
+> someGames :: IO()
+> someGames = do
+>   print $ evalState (playGame "ab") startState
+>   print $ evalState (playGame "ca") startState
+>   print $ evalState (playGame "cabca") startState
+>   print $ evalState (playGame "caaca") startState
+>   print $ evalState (playGame "caacbcaa") startState
+
+問題３
+フィボナッチ数列をState Monad を用いて効率化せよ（メモ化）。
+
+> type Fibnum = Integer
+> type FibState = (Int, Fibnum, Fibnum)
+>
+> fib :: Int -> Integer
+> fib 0 = 0
+> fib 1 = 1
+> fib n = evalState fibImpl (2,1,0)
+>   where 
+>     fibImpl :: State FibState Integer
+>     fibImpl = do
+>       (i, r1, r2) <- get
+>       if i == n 
+>         then 
+>           return $ r1 + r2
+>         else do
+>           put (i+1, r1+r2, r1)
+>           fibImpl
+>
+> naiveFib n
+>  | n == 0    = 0
+>  | n == 1    = 1
+>  | otherwise = (fib (n-1)) + (fib (n-2))
+
+State Monad の状態変数 
+  (i,r1,r2)
+にひとつ前とさらにその前の状態を格納しながら計算を進めるので、空間効率が上がる。
 
