@@ -427,6 +427,25 @@ The same thing happens here.
 To get the result from a function, we need to apply it to something, which is why we use (h w) here, and then we apply f to that.
 f returns a monadic value, which is a function in our case, so we apply it to w as well.
 
+The infix operator 
+  -> 
+is also the same as an prefix operator:
+  a -> b == (->) a b
+Thus 
+  (->) a 
+can be seen as a type-constructor, and the restriction 
+  m == (->) r 
+of bind is
+  (>>=) :: m a -> (a -> m b) -> m b
+        :: ((->) r a) -> (a -> (->) r b) -> ((->) r b)
+        :: (r -> a) -> (a -> r -> b) -> (r -> b) 
+Thus if we take
+  h :: r -> a
+  f :: a -> r -> b 
+then
+  h >>= f == (>>=) h f :: (r -> b)
+is given by, w :: r,
+  h >>= f  = \w -> f (h w) w
 The Reader Monad
 If you don't get how (>>=) works at this point, don't worry.
 
@@ -483,7 +502,7 @@ Let us try another bind (=<<):
 
 > addStuff''''' = (\a -> ((\b -> return (a+b)) =<< (+10))) =<< (*2)
 > addStuff'''''' = (=<<) (\a -> ((=<<) (\b -> return (a+b)) (+10))) (*2)
- 
+
 Tasteful Stateful Computations
 Haskell is a pure language, and because of that, our programs are made of functions that can't change any global state or variables; they can only do some computations and return the results.
 
@@ -767,7 +786,7 @@ Thomasは、最終日にどれだけ作業をしないといけなくなるか�
 >       put (workLeft - todaysWork, daysLeft - 1) -- "renew" the state
 >       work                                      -- recursion
 >
-> howMachDoIHaveToWorkAtTheLastDay = do
+> howMachDoThomasHasToWorkAtTheLastDay = do
 >   ws <- getLine
 >   ds <- getLine
 >   let (w,d) = (read ws, read ds)  :: (Int, Int)
@@ -847,4 +866,5 @@ a,b,c の三種の文字からなる文字列が渡される。
 State Monad の状態変数 
   (i,r1,r2)
 にひとつ前とさらにその前の状態を格納しながら計算を進めるので、空間効率が上がる。
+
 
