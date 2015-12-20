@@ -867,4 +867,107 @@ State Monad の状態変数
   (i,r1,r2)
 にひとつ前とさらにその前の状態を格納しながら計算を進めるので、空間効率が上がる。
 
+Error Error on the Wall
+Maybe is used to add a context of possible failure to values.
 
+The Either e a type also allows us to incorporate a context of possible failure into our values.
+It also lets us attach values to the failure, so they can describe what went wrong or provide other useful information regarding the failure.
+
+  *FAFMM_14> :info Either
+  data Either a b = Left a | Right b  -- Defined in ‘Data.Either’
+
+  *FAFMM_14> :type Right 4
+  Right 4 :: Num b => Either a b
+  *FAFMM_14> :type Left "brabrabra"
+  Left "brabrabra" :: Either [Char] b
+
+Its Monad instance is similar to that of Maybe, and it can be found in ...
+Wait, where is?
+It's not in Control.Monad.Error:
+
+  *FAFMM_14> :m Control.Monad.Error
+  <interactive>:1:1: Warning:
+  Module ‘Control.Monad.Error’ is deprecated:
+  Use Control.Monad.Except instead
+
+  *FAFMM_14 Control.Monad.Error> :info Monad
+  class Applicative m => Monad (m :: * -> *) where
+  instance Monad (Either e) -- Defined in ‘Data.Either’
+
+The instance declaration is like as follows:
+  
+  instance (Error e) => Monad (Either e) where
+    return x = Right x           -- return x = Just x
+    Right x >>= f = f x          -- Just x >>= f = f x
+    Left err >>= f = Left err    -- Nothing >>= f = Nothing
+    fail msg = Left (strMsg msg) -- fail _ = Nothing
+
+Here is a few examples of usage:
+
+  Prelude Data.Either> Left "boom" >>= \x -> return (x+1)
+  Left "boom"
+  Prelude Data.Either> Left "boom" >>= \x -> Left "no way"
+  Left "boom"
+  Prelude Data.Either> Left "boom" >>= \_ -> Left "no way"
+  Left "boom"
+  Prelude Data.Either> Right 100 >>= \x -> return (x+1)
+  Right 101
+
+Some Useful Monadic Functions
+ListM and Friends
+liftM = fmap  
+ap = (<*>)
+
+The join Function
+  join :: (Monad m) => m (m a) -> ma
+  join x = x >>= id
+         = (>>=) id x -- (>>=) is the Kleisli star operator
+
+  *FAFMM_14 Data.Either> join $ Just $ Just 9
+  Just 9
+  *FAFMM_14 Data.Either> join $ Just $ Just $ Just 9
+  Just (Just 9)
+  *FAFMM_14 Data.Either> join (Just Nothing)
+  Nothing
+
+Flattening lists is pretty intuitive:
+
+  *FAFMM_14 Data.Either> join [[1,2,3],[4,5,6]]
+  [1,2,3,4,5,6]
+  "aiueokakki"
+  *FAFMM_14 Data.Either> join [["aka","ao"],["kiiro"]]
+  ["aka","ao","kiiro"]
+
+That is, for lists, join is just concat.
+
+The Writer example doesn't work:
+  
+  *FAFMM_14> runWriter $ join (Writer (Writer (1, "aaa"), "bbb"))
+
+  <interactive>:17:19:
+  Not in scope: data constructor ‘Writer’
+  Perhaps you meant one of these:
+  ‘WriterT’ (imported from Control.Monad.Writer),
+  variable ‘writer’ (imported from Control.Monad.Writer)
+
+  <interactive>:17:27:
+  Not in scope: data constructor ‘Writer’
+  Perhaps you meant one of these:
+  ‘WriterT’ (imported from Control.Monad.Writer),
+  variable ‘writer’ (imported from Control.Monad.Writer)
+  
+  *FAFMM_14> join (Right (Left "error"))
+  Left "error"
+  *FAFMM_14> join (Left "error")
+  Left "error"
+
+If we apply join to a stateful computation whose result is a stateful computation, the result is a stateful computation that first runs the outer stateful computation and then the resulting one:
+  
+  *FAFMM_14> runState (join (state $ \s -> (push 10, 1:2:s))) [0,0,0]
+  ((),[10,1,2,0,0,0])
+
+filterM
+  *FAFMM_14> :type filter
+  filter :: (a -> Bool) -> [a] -> [a]
+  *FAFMM_14> :type filterM
+  filterM :: Monad m => (a -> m Bool) -> [a] -> m [a]
