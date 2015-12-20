@@ -14,6 +14,8 @@ http://qiita.com/saltheads/items/6025f69ba10267bbe3ee
 > import Control.Applicative
 > import System.Random
 > import Control.Monad.State
+> import Data.List
+> import AFOM_13
 
 import Control.Monad.Instances
   FAFMM_14.lhs:13:3: Warning:
@@ -982,7 +984,7 @@ Now, let's make a predicate that, aside from presenting a Boolean value, also pr
 > keepSmall :: Int -> Writer [String] Bool
 > keepSmall x
 >   | x < 4 = do
->       tell ["Keeping " ++ show x]
+>       tell ["Keeping " ++ show x] -- with a log
 >       return True
 >   | otherwise = do
 >       tell [show x ++ " is too large, throwing it away"]
@@ -1005,9 +1007,144 @@ Now, let's make a predicate that, aside from presenting a Boolean value, also pr
   10 is too large, throwing it away
   Keeping 3
 
+  *FAFMM_14> snd $ runWriter $ filterM keepSmall [1..9]
+  ["Keeping 1","Keeping 2","Keeping 3","4 is too large, throwing it away","5 is too large, throwing it away","6 is too large, throwing it away","7 is too large, throwing it away","8 is too large, throwing it away","9 is too large, throwing it away"]
+  *FAFMM_14> mapM_ putStrLn it
+  Keeping 1
+  Keeping 2
+  Keeping 3
+  4 is too large, throwing it away
+  5 is too large, throwing it away
+  6 is too large, throwing it away
+  7 is too large, throwing it away
+  8 is too large, throwing it away
+  9 is too large, throwing it away
+
 So, just by providing a monadic predicate to filterM, we were able to filter a list while taking advantage of the monadic context that we used.
 
 A very cool Haskell trick is using filterM to get the powerlist of a list.
 
 > powerList :: [a] -> [[a]]
 > powerList = filterM (\_ -> [True, False])
+  
+  *FAFMM_14> powerList "123"
+  ["123","12","13","1","23","2","3",""]
+
+foldM
+The monadic counterpart to foldl is foldM.
+
+  *FAFMM_14> :type foldl
+  foldl :: Foldable t => (b -> a -> b) -> b -> t a -> b
+  *FAFMM_14> :type foldM
+  foldM
+    :: (Monad m, Foldable t) => (b -> a -> m b) -> b -> t a -> m b
+
+> binSmalls :: Int -> Int -> Maybe Int
+> binSmalls acc x
+>   | x > 9     = Nothing
+>   | otherwise = Just (acc + x)
+
+  *FAFMM_14> foldM binSmalls 0 [2,8,3,1,9]
+  Just 23
+  *FAFMM_14> foldM binSmalls 0 [2,8,3,1,9,10]
+  Nothing
+
+Making a Safe RPN Calculator
+This was the main body of our function:
+
+  import Data.List
+
+  solveRPN :: String -> Double
+  solveRPN = head . foldl foldingFunction [] . words
+
+  foldingFunction :: [Double] -> String -> [Double]
+  foldingFunction (x:y:ys) "*" = (y * x) : ys
+  foldingFunction (x:y:ys) "+" = (y + x) : ys
+  foldingFunction (x:y:ys) "-" = (y - x) : ys
+  foldingFunction xs numberString = read numberString : xs
+
+Let's first make our folding function capable of graceful failure.
+Its type is going to change from what it is now to this:
+
+  foldingFunction :: [Double] -> String -> Maybe [Double]
+
+So, it will either return Just a new stack or it will fail with Nothing.
+
+> readMaybe :: Read a => String -> Maybe a
+> readMaybe st = case reads st of
+>                  [(x,"")] -> Just x
+>                  _        -> Nothing
+
+  *FAFMM_14> readMaybe "1" :: Maybe Int
+  Just 1
+  *FAFMM_14> readMaybe "1" :: Maybe Double
+  Just 1.0
+  *FAFMM_14> readMaybe "GOTO HELL" :: Maybe Int
+  Nothing
+
+> foldingFunction :: [Double] -> String -> Maybe [Double]
+> foldingFunction (x:y:ys) "*" = return ((y * x) : ys) -- wrapped by return
+> foldingFunction (x:y:ys) "+" = return ((y + x) : ys)
+> foldingFunction (x:y:ys) "-" = return ((y - x) : ys)
+> -- foldingFunction xs numberString = liftM (:xs) $ readMaybe numberString 
+> foldingFunction xs numberString = fmap (:xs) $ readMaybe numberString 
+
+  *FAFMM_14> foldingFunction [3,2] "*"
+  Just [6.0]
+  *FAFMM_14> foldingFunction [3,2] "-"
+  Just [-1.0]
+  *FAFMM_14> foldingFunction [3,2] "+"
+  Just [5.0]
+
+> solveRPN :: String -> Maybe Double
+> solveRPN st = do
+>   [result] <- foldM foldingFunction [] $ words st
+>   return result
+
+  *FAFMM_14> foldM foldingFunction  [] $ words "1 2 * 4 +"
+  Just [6.0]
+  *FAFMM_14> solveRPN "1 2 * 4 + 5 *"
+  Just 30.0
+  *FAFMM_14> solveRPN "1 2 * 4 + 5 * brabra"
+  Nothing
+
+Composing Monadic Functions
+
+  *FAFMM_14> let f = (+1) . (*100)
+  *FAFMM_14> f 4
+  401
+  *FAFMM_14> let g = (\x -> return (x+1)) <=< (\x -> return (100*x))
+  *FAFMM_14> :type g
+  g :: (Monad m, Num c) => c -> m c
+  *FAFMM_14> (=<<) g (Just 4)
+  Just 401
+  *FAFMM_14> (=<<) g $ Just 4
+  Just 401
+
+In this example, we first composed two normal functions in f, applied the resulting function to 4, and then composed to two monadic functions in g and fed Just 4 to the resulting function with bind >>=.
+
+If we have a bunch of functions in a list, we can compose them all into one big function:
+
+  *FAFMM_14> let f = foldr (.) id [(+10), (*100), (+1)]
+  *FAFMM_14> f 1
+  210
+
+We can compose monadic functions in the same way, but instead of normal composition, we can use Kleisli composition <=<, and instead of id, we should use return.
+Note that, under Kleisli composition <=<, the monadic "unit" is return :: a -> m a.
+
+> inMany :: Int -> KnightPos -> [KnightPos]
+> inMany n start = return start >>= foldr (<=<) return (replicate n moveKnight)
+
+First, we use replicate to make a list that contains n copies of the function moveKnight.
+Then we monadically compose all those functions into one, which gives us a function that takes a starting position and nondeterministically moves the knight n times.
+Then we just make the starting position into a singleton list with return and feed it to the function.
+
+  *FAFMM_14> sort $ nub $ inMany 8 (1,1)
+  [(1,1),(1,3),(1,5),(1,7),(2,2),(2,4),(2,6),(2,8),(3,1),(3,3),(3,5),(3,7),(4,2),(4,4),(4,6),(4,8),(5,1),(5,3),(5,5),(5,7),(6,2),(6,4),(6,6),(6,8),(7,1),(7,3),(7,5),(7,7),(8,2),(8,4),(8,6),(8,8)]
+
+Now, we can change our canReachIn3 to be more general as well:
+
+> canReachIn :: Int -> KnightPos -> KnightPos -> Bool
+> canReachIn n start end = end `elem` inMany n start
+
+Making Monads
