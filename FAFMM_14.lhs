@@ -971,3 +971,43 @@ filterM
   filter :: (a -> Bool) -> [a] -> [a]
   *FAFMM_14> :type filterM
   filterM :: Monad m => (a -> m Bool) -> [a] -> m [a]
+
+  *FAFMM_14> filter (<4) [9,1,5,2,10,3]
+  [1,2,3]
+  *FAFMM_14> filter (\x -> x<4) [9,1,10,2,3,11]
+  [1,2,3]
+
+Now, let's make a predicate that, aside from presenting a Boolean value, also provides a log of what it did.
+
+> keepSmall :: Int -> Writer [String] Bool
+> keepSmall x
+>   | x < 4 = do
+>       tell ["Keeping " ++ show x]
+>       return True
+>   | otherwise = do
+>       tell [show x ++ " is too large, throwing it away"]
+>       return False
+
+  *FAFMM_14> runWriter $ filterM keepSmall [9,1,5,2,10,3]
+  ([1,2,3],["9 is too large, throwing it away","Keeping 1","5 is too large, throwing it away","Keeping 2","10 is too large, throwing it away","Keeping 3"])
+  *FAFMM_14> fst it
+  [1,2,3]
+  *FAFMM_14> runWriter $ filterM keepSmall [9,1,5,2,10,3]
+  ([1,2,3],["9 is too large, throwing it away","Keeping 1","5 is too large, throwing it away","Keeping 2","10 is too large, throwing it away","Keeping 3"])
+  *FAFMM_14> snd it
+  ["9 is too large, throwing it away","Keeping 1","5 is too large, throwing it away","Keeping 2","10 is too large, throwing it away","Keeping 3"]
+
+  *FAFMM_14> mapM_ putStrLn $ snd $ runWriter $ filterM keepSmall [9,1,4,2,10,3]
+  9 is too large, throwing it away
+  Keeping 1
+  4 is too large, throwing it away
+  Keeping 2
+  10 is too large, throwing it away
+  Keeping 3
+
+So, just by providing a monadic predicate to filterM, we were able to filter a list while taking advantage of the monadic context that we used.
+
+A very cool Haskell trick is using filterM to get the powerlist of a list.
+
+> powerList :: [a] -> [[a]]
+> powerList = filterM (\_ -> [True, False])
