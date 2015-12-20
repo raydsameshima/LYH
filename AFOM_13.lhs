@@ -407,3 +407,29 @@ Right Identity
 
 Associativity
 ((m >>= f) >>= g) is just like doing (m >>= (\x -> f x >>= g).
+
+Suppose we compose two functions named g and f:
+
+  (.) g f = g . f = (\x -> g (f x))
+
+Similarly, we have a way to compose two monadic functions:
+
+  *FAFMM_14> :type (<=<)
+  (<=<) :: Monad m => (b -> m c) -> (a -> m b) -> a -> m c
+
+  g <=< f = (\x -> g x >>= f)
+          = (\x -> (=<<) f (g x))
+
+This is merely a Kleisli composition!
+  
+  Prelude> let f = \x -> [x, -x]
+  Prelude> let g = \x -> [3*x, 2*x]
+
+  Prelude> :m Control.Monad
+  Prelude Control.Monad> let h = g <=< f
+  Prelude Control.Monad> h 3
+  [9,6,-9,-6]
+
+Since Kleisli composition is associative, we have
+
+  h <=< (g <=< f) == (h <=< g) <=< f
