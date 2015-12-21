@@ -16,6 +16,7 @@ http://qiita.com/saltheads/items/6025f69ba10267bbe3ee
 > import Control.Monad.State
 > import Data.List
 > import AFOM_13
+> import Data.Ratio
 
 import Control.Monad.Instances
   FAFMM_14.lhs:13:3: Warning:
@@ -1148,3 +1149,55 @@ Now, we can change our canReachIn3 to be more general as well:
 > canReachIn n start end = end `elem` inMany n start
 
 Making Monads
+Let's say that every item in the list comes with another value: a probability of it happening:
+  (value, probability)
+For example,
+  [(3, 1%2), (5, 1%4), (9, 1%4)] 
+
+> newtype Prob a = Prob { getProb :: [(a, Rational)]} deriving Show
+> -- wrapping
+> instance Functor Prob where
+>   fmap f (Prob xs) = Prob $ map (\(x,p) -> (f x, p)) xs
+
+We unwrap it from the newtype with pattern matching, apply the function f to the values while keeping the probabilities as they are, and then wrap it back up.
+  
+  *FAFMM_14> let probSet = Prob [(3,1%2),(5,1%4),(9,1%4)]
+  *FAFMM_14> :type it
+  it :: Num b => Prob b
+  *FAFMM_14> fmap negate $ probSet
+  Prob {getProb = [(-3,1 % 2),(-5,1 % 4),(-9,1 % 4)]}
+
+Let's make these instance monad:
+
+> flatten :: Prob (Prob a) -> Prob a -- merely join
+> flatten (Prob xs) = Prob $ concat $ map multAll xs
+>   where multAll (Prob innerxs, p) = map (\(x,r) -> (x, p*r)) innerxs
+
+  *FAFMM_14> let thisSituation = Prob [(Prob [('a',1%2),('b',1%2)], 1%4), (Prob [('c',1%2),('d',1%2)], 3%4)]
+  *FAFMM_14> flatten thisSituation 
+  Prob {getProb = [('a',1 % 8),('b',1 % 8),('c',3 % 8),('d',3 % 8)]}
+
+Now we have all that we need, and we can write a Monad instance!
+We need to implement an applicative instance of Prob.
+
+ instance Monad Prob where
+   return x = Prob [(x,1%1)]
+   m >>= f = flatten (fmap f m)
+   fail _ = Prob []
+
+It's important to check if the monad lows hold for the monad that we just made.
+
+> data Coin = Heads | Tails deriving (Show, Eq)
+>
+> coin :: Prob Coin
+> coin = Prob [(Heads,1%2), (Tails, 1%2)]
+>
+> loadedCoin :: Prob Coin
+> loadedCoin = Prob [(Heads, 1%10), (Tails, 9%10)]
+
+ flipThree :: Prob Bool
+ flipThree = do
+   a <- coin
+   b <- coin
+   c <- loadedCoin
+   return $ all (==Tails) [a,b,c]
