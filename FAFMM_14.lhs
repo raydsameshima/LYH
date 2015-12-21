@@ -1186,11 +1186,14 @@ Now we have all that we need, and we can write a Monad instance!
 >   fail _ = Prob []
 
 Before that, we need to implement an applicative instance of Prob.
+To tell the truth, I can not implement (<*>) function, but...
+http://qiita.com/bra_cat_ket/items/2cd2fb96c353ea58061a
+
 
 > instance Applicative Prob where
 >   pure x = Prob [(x,1%1)]
 >   -- (<*>) :: Applicative f => f (a -> b) -> f a -> f b
->   -- (Prob f) <*> xs = fmap f xs
+>   pf <*> pa = flatten $ fmap (\f -> fmap f pa) pf
 
 It's important to check if the monad lows hold for the monad that we just made.
 
