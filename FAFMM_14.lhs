@@ -1158,6 +1158,7 @@ For example,
 > -- wrapping
 > instance Functor Prob where
 >   fmap f (Prob xs) = Prob $ map (\(x,p) -> (f x, p)) xs
+> -- xs has its type as xs :: [(a,Rational)]
 
 We unwrap it from the newtype with pattern matching, apply the function f to the values while keeping the probabilities as they are, and then wrap it back up.
   
@@ -1178,12 +1179,18 @@ Let's make these instance monad:
   Prob {getProb = [('a',1 % 8),('b',1 % 8),('c',3 % 8),('d',3 % 8)]}
 
 Now we have all that we need, and we can write a Monad instance!
-We need to implement an applicative instance of Prob.
 
- instance Monad Prob where
-   return x = Prob [(x,1%1)]
-   m >>= f = flatten (fmap f m)
-   fail _ = Prob []
+> instance Monad Prob where
+>   return x = Prob [(x,1%1)]
+>   m >>= f = flatten (fmap f m)
+>   fail _ = Prob []
+
+Before that, we need to implement an applicative instance of Prob.
+
+> instance Applicative Prob where
+>   pure x = Prob [(x,1%1)]
+>   -- (<*>) :: Applicative f => f (a -> b) -> f a -> f b
+>   -- (Prob f) <*> xs = fmap f xs
 
 It's important to check if the monad lows hold for the monad that we just made.
 
@@ -1195,9 +1202,10 @@ It's important to check if the monad lows hold for the monad that we just made.
 > loadedCoin :: Prob Coin
 > loadedCoin = Prob [(Heads, 1%10), (Tails, 9%10)]
 
- flipThree :: Prob Bool
- flipThree = do
-   a <- coin
-   b <- coin
-   c <- loadedCoin
-   return $ all (==Tails) [a,b,c]
+> flipThree :: Prob Bool
+> flipThree = do
+>   a <- coin
+>   b <- coin
+>   c <- loadedCoin
+>   return $ all (==Tails) [a,b,c]
+
