@@ -1195,6 +1195,14 @@ http://qiita.com/bra_cat_ket/items/2cd2fb96c353ea58061a
 >   -- (<*>) :: Applicative f => f (a -> b) -> f a -> f b
 >   pf <*> pa = flatten $ fmap (\f -> fmap f pa) pf
 
+In general, given Monad, we can define an Applicative by
+
+  instance Applicative p where
+    pure = return
+    pf <*> pa = pf >>= (\f -> fmap f pa)
+
+(Thanks lotz (https://twitter.com/lotz84_))
+
 It's important to check if the monad lows hold for the monad that we just made.
 
 > data Coin = Heads | Tails deriving (Show, Eq)
