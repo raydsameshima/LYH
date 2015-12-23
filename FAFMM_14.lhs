@@ -1168,32 +1168,43 @@ We unwrap it from the newtype with pattern matching, apply the function f to the
   *FAFMM_14> fmap negate $ probSet
   Prob {getProb = [(-3,1 % 2),(-5,1 % 4),(-9,1 % 4)]}
 
-Let's make these instance monad:
+Let's make these instance monad, at first our "join":
 
 > flatten :: Prob (Prob a) -> Prob a -- merely join
 > flatten (Prob xs) = Prob $ concat $ map multAll xs
 >   where multAll (Prob innerxs, p) = map (\(x,r) -> (x, p*r)) innerxs
+> -- innerxs :: Prob a ~ [(a, Rational)]
 
-  *FAFMM_14> let thisSituation = Prob [(Prob [('a',1%2),('b',1%2)], 1%4), (Prob [('c',1%2),('d',1%2)], 3%4)]
+> thisSituation = Prob 
+>   [(Prob [('a',1%2),('b',1%2)], 1%4)
+>   ,(Prob [('c',1%2),('d',1%2)], 3%4)
+>   ]
+
   *FAFMM_14> flatten thisSituation 
   Prob {getProb = [('a',1 % 8),('b',1 % 8),('c',3 % 8),('d',3 % 8)]}
+  *FAFMM_14> getProb . flatten $ thisSituation 
+  [('a',1 % 8),('b',1 % 8),('c',3 % 8),('d',3 % 8)]
 
 Now we have all that we need, and we can write a Monad instance!
+Using the fact that m >>= f always equals join (fmap f m), where
+  *FAFMM_14> :type join
+  join :: Monad m => m (m a) -> m a 
+  *FAFMM_14> [1,2,3] >>= (\x -> [x*10])
+  [10,20,30]
+  *FAFMM_14> fmap (\x -> [x*10]) [1,2,3]
+  [[10],[20],[30]]
+  *FAFMM_14> join it
+  [10,20,30]
 
 > instance Monad Prob where
 >   return x = Prob [(x,1%1)]
->   m >>= f = flatten (fmap f m)
+>   m >>= f = flatten (fmap f m) -- flatten is merely "join"
 >   fail _ = Prob []
 
 Before that, we need to implement an applicative instance of Prob.
 To tell the truth, I can not implement (<*>) function, but...
+
 http://qiita.com/bra_cat_ket/items/2cd2fb96c353ea58061a
-
-
-> instance Applicative Prob where
->   pure x = Prob [(x,1%1)]
->   -- (<*>) :: Applicative f => f (a -> b) -> f a -> f b
->   pf <*> pa = flatten $ fmap (\f -> fmap f pa) pf
 
 In general, given Monad, we can define an Applicative by
 
@@ -1201,7 +1212,14 @@ In general, given Monad, we can define an Applicative by
     pure = return
     pf <*> pa = pf >>= (\f -> fmap f pa)
 
-(Thanks lotz (https://twitter.com/lotz84_))
+(Thanks! lotz-san (https://twitter.com/lotz84_))
+
+> instance Applicative Prob where
+>   pure x = Prob [(x,1%1)]
+>   pf <*> pa = flatten $ fmap (\f -> fmap f pa) pf
+>   -- (<*>) :: Applicative Prob => Prob (a -> b) -> Prob a -> Prob b
+>   -- pf :: Prob (a -> b)
+>   -- pa :: Prob a
 
 It's important to check if the monad lows hold for the monad that we just made.
 
@@ -1220,3 +1238,9 @@ It's important to check if the monad lows hold for the monad that we just made.
 >   c <- loadedCoin
 >   return $ all (==Tails) [a,b,c]
 
+  *FAFMM_14> getProb flipThree 
+  [(False,1 % 40),(False,9 % 40),(False,1 % 40),(False,9 % 40),(False,1 % 40),(False,9 % 40),(False,1 % 40),(True,9 % 40)]
+  *FAFMM_14> map snd it
+  [1 % 40,9 % 40,1 % 40,9 % 40,1 % 40,9 % 40,1 % 40,9 % 40]
+  *FAFMM_14> sum it
+  1 % 1
