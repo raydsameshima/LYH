@@ -199,7 +199,7 @@ Let's modify our breadcrumbs so that they also contain information about everyth
 Instead of Direction, we'll make a new data type:
 
 > data Crumb a = LeftCrumb a (Tree a) | RightCrumb a (Tree a)
->              deriving (Show)
+>              deriving (Show, Eq)
 
 Now, instead of just L, we have a LeftCrumb, which also contains the element in the node that we moved from and the right tree that we didn't visit.
 
@@ -240,3 +240,42 @@ A pair that contains a focused part of a data structure and its surroundings is 
 > type Zipper a = (Tree a, Breadcrumbs a) -- Focus is also a cool synonym
 
 Manipulating Trees Under Focus
+Now we can move up and down (and of course left and right), let's make a function that modifies the element in the root of the subtree on which the zipper is focusing:
+
+> modify :: (a -> a) -> Zipper a -> Zipper a
+> modify f (Node x l r, bs) = (Node (f x) l r, bs)
+> modify f (Empty,      bs) = (Empty,          bs)
+
+If we're focusing on a node, we modify its root element with the function f.
+
+  *ZIP_15> let newFocus = modify (\_ -> 'P') $ goRight $ goLeft $ (freeTree, [])
+  *ZIP_15> freeTree 
+  Node 'P' (Node 'O' (Node 'L' (Node 'N' Empty Empty) (Node 'T' Empty Empty)) (Node 'Y' (Node 'S' Empty Empty) (Node 'A' Empty Empty))) (Node 'L' (Node 'W' (Node 'C' Empty Empty) (Node 'R' Empty Empty)) (Node 'A' (Node 'A' Empty Empty) (Node 'C' Empty Empty)))
+  *ZIP_15> newFocus 
+  (Node 'P' (Node 'S' Empty Empty) (Node 'A' Empty Empty),[RightCrumb 'O' (Node 'L' (Node 'N' Empty Empty) (Node 'T' Empty Empty)),LeftCrumb 'P' (Node 'L' (Node 'W' (Node 'C' Empty Empty) (Node 'R' Empty Empty)) (Node 'A' (Node 'A' Empty Empty) (Node 'C' Empty Empty)))])
+  *ZIP_15> :type it
+  it :: Zipper Char
+
+We go left, then right, and then modify the root element by replacing it with a 'P'.
+This reads even better if we use (-:) function:
+(I have added an Eq)
+
+  *ZIP_15> let newFocus = modify (\_ -> 'P') $ goRight $ goLeft $ (freeTree, [])
+  *ZIP_15> let newerFocus = (freeTree, []) -: goLeft -: goRight -: modify (\_ -> 'P')
+  *ZIP_15> newFocus == newerFocus 
+  True
+
+We can then move up if we want and replace an element with a mysterious 'X':
+
+  *ZIP_15> let newFocus = modify (\_ -> 'P') $ goRight $ goLeft $ (freeTree, [])
+  *ZIP_15> let newerFocus = (freeTree, []) -: goLeft -: goRight -: modify (\_ -> 'P')
+  *ZIP_15> newFocus == newerFocus 
+  True
+
+Of course we have
+
+  *ZIP_15> let newerFocus2 = modify (\_ -> 'X') (goUp newFocus)
+  *ZIP_15> newFocus2 == newerFocus2 
+  True
+  
+
