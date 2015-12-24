@@ -104,6 +104,34 @@ One way would be to pattern match on our tree until we find the element, by firs
     )
 
 Not only is this rather ugly, it's also kind of confusing.
+Here is our freetree:
+
+         P
+        / \
+       /   \
+      /     \
+     /       \
+    O         L
+   / \       / \
+  /   \     /   \
+ L     Y   W     A
+ ^     ^   ^     ^
+N T   S A C R   A C
+^ ^   ^ ^ ^ ^   ^ ^
+
+where I have omitted the last Empty's.
+
+The following is the pattern matching in changeToP' function
+
+         x
+        / \
+       /   \
+      /     \
+     /       \
+    l         y
+             / \
+            /   \
+           _    rest   -- \_ -> 'P'
 
 Is there a better way of doing this?
 How about if we make our function take a tree along with a list of directions.
@@ -111,7 +139,7 @@ The direction will be either L(left) or R(right).
 We'll change the element that we arrive at by following the supplied direction.
 
 > data Direction = L | R
->                deriving (Show)
+>                deriving (Show, Eq)
 > type Directions = [Direction]
 >
 > changeToP :: Directions -> Tree Char -> Tree Char
@@ -149,3 +177,25 @@ While this technique may seem cool (I don't think so!), it can be rather ineffic
 If we want to change two elements that are close to each other, we need to start from the root of the tree and walk all the way to the bottom again.
 
 A Trail of Breadcrumbs
+For focusing on a subtree, we want something better than just a list of directions that we always follow from the root of our tree.
+Would it help if we started at the root of the tree and moved either left or right one step at a time, leaving "breadcrumbs" along the way?
+
+> type Breadcrumbs = [Direction] -- reversed order
+
+Here is a function that takes a tree and some breadcrumbs and moves to the left subtree while adding L to the head of the list that represents our breadcrumbs:
+
+> goLeft :: (Tree a, Breadcrumbs) -> (Tree a, Breadcrumbs)
+> goLeft (Node _ l _, bs) = (l, L:bs)
+>
+> goRight :: (Tree a, Breadcrumbs) -> (Tree a, Breadcrumbs)
+> goRight (Node _ _ r, bs) = (r, R:bs)
+
+> (-:) :: a -> (a -> b) -> b
+> x -: f = f x
+
+I added Eq, and
+
+  *ZIP_15> (freeTree, []) -: goRight -: goLeft == (freeTree, []) -: goRight -: goLeft
+  True
+
+Going Back Up
