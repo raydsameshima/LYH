@@ -277,5 +277,54 @@ Of course we have
   *ZIP_15> let newerFocus2 = modify (\_ -> 'X') (goUp newFocus)
   *ZIP_15> newFocus2 == newerFocus2 
   True
-  
 
+Moving up is easy because the breadcrumbs that re leave form the part of the data structure that we're not focusing on, but it's inverted, sort of like turning a sock inside out.
+That's why when we want to move up, we don't need to start from the root and make our way down.
+We just take the top of our inverted tree, thereby uninverting a part of it and adding it to our focus.
+  
+> attach :: Tree a -> Zipper a -> Zipper a
+> attach t (_, bs) = (t,bs)
+  
+  *ZIP_15> freeTree 
+  Node 'P' (Node 'O' (Node 'L' (Node 'N' Empty Empty) 
+                               (Node 'T' Empty Empty)) 
+                     (Node 'Y' (Node 'S' Empty Empty) 
+                               (Node 'A' Empty Empty))) 
+           (Node 'L' (Node 'W' (Node 'C' Empty Empty) 
+                               (Node 'R' Empty Empty)) 
+                     (Node 'A' (Node 'A' Empty Empty) 
+                               (Node 'C' Empty Empty)))
+
+
+  *ZIP_15> let farLeft = (freeTree, []) -: goLeft -: goLeft -: goLeft
+  *ZIP_15> farLeft 
+  (Node 'N' Empty Empty,
+  [
+    LeftCrumb 'L' (Node 'T' Empty Empty)
+   ,LeftCrumb 'O' (Node 'Y' (Node 'S' Empty Empty) 
+                            (Node 'A' Empty Empty))
+   ,LeftCrumb 'P' (Node 'L' (Node 'W' (Node 'C' Empty Empty) 
+                                      (Node 'R' Empty Empty)) 
+                            (Node 'A' (Node 'A' Empty Empty) 
+                                      (Node 'C' Empty Empty)))])
+
+  *ZIP_15> let newFocus = farLeft -: attach (Node 'Z' Empty Empty)
+  *ZIP_15> newFocus 
+  (
+  Node 'Z' Empty Empty,
+  [
+     LeftCrumb 'L' (Node 'T' Empty Empty)
+    ,LeftCrumb 'O' (Node 'Y' (Node 'S' Empty Empty) 
+                             (Node 'A' Empty Empty))
+    ,LeftCrumb 'P' (Node 'L' (Node 'W' (Node 'C' Empty Empty) 
+                                       (Node 'R' Empty Empty)) 
+                             (Node 'A' (Node 'A' Empty Empty) 
+                             (Node 'C' Empty Empty)))
+  ]
+  )
+
+Going Straight to the Top, Where the Air is Fresh and Clean!
+
+> topMost :: Zipper a -> Zipper a
+> topMost (t,[]) = (t, [])     -- terminal condition
+> topMost z = topMost $ goUp z -- recursion
