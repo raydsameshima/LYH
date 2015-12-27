@@ -217,10 +217,10 @@ Let's also change our Breadcrumbs type synonym to reflect this:
 
 Next up, we also need to modify the goLeft and goRIght functions to store information about the path that we didn't take in our breadcrumbs, instead of ignoring that information as they did before.
 
-> goLeft :: (Tree a, Breadcrumbs a) -> (Tree a, Breadcrumbs a)
-> goLeft (Node x l r, bs) = (l, LeftCrumb x r :bs)
-> goRight :: (Tree a, Breadcrumbs a) -> (Tree a, Breadcrumbs a)
-> goRight (Node x l r, bs) = (r, RightCrumb x l:bs)
+> -- goLeft :: (Tree a, Breadcrumbs a) -> (Tree a, Breadcrumbs a)
+> -- goLeft (Node x l r, bs) = (l, LeftCrumb x r :bs)
+> -- goRight :: (Tree a, Breadcrumbs a) -> (Tree a, Breadcrumbs a)
+> -- goRight (Node x l r, bs) = (r, RightCrumb x l:bs)
 
 Note that these functions assume that the current tree that's under focus isn't Empty.
 Pattern match will fail if they are empty tree.
@@ -229,9 +229,9 @@ We were previously able to go left and right.
 What we have now in the ability to actually go back up by remembering stuff about the parent nodes and paths that we didn't visit.
 Here is the goUp function:
 
-> goUp :: (Tree a, Breadcrumbs a) -> (Tree a, Breadcrumbs a) 
-> goUp (t, LeftCrumb x r:bs) = (Node x t r, bs)
-> goUp (t, RightCrumb x l:bs) = (Node x l t, bs)
+> -- goUp :: (Tree a, Breadcrumbs a) -> (Tree a, Breadcrumbs a) 
+> -- goUp (t, LeftCrumb x r:bs) = (Node x t r, bs)
+> -- goUp (t, RightCrumb x l:bs) = (Node x l t, bs)
 
 Note that this function causes an error if we're already at the top of a tree and we want to move up.
 Later on, we'll use the Maybe monad to represent possible failure when moving focus.
@@ -328,9 +328,9 @@ We just take the top of our inverted tree, thereby uninverting a part of it and 
 
 Going Straight to the Top, Where the Air is Fresh and Clean!
 
-> topMost :: Zipper a -> Zipper a
-> topMost (t,[]) = (t, [])     -- terminal condition
-> topMost z = topMost $ goUp z -- recursion
+> -- topMost :: Zipper a -> Zipper a
+> -- topMost (t,[]) = (t, [])     -- terminal condition
+> -- topMost z = topMost $ goUp z -- recursion
 
   *ZIP_15> (freeTree, []) -: goLeft -: goLeft -: goRight
   (Node 'T' Empty Empty,[RightCrumb 'L' (Node 'N' Empty Empty),LeftCrumb 'O' (Node 'Y' (Node 'S' Empty Empty) (Node 'A' Empty Empty)),LeftCrumb 'P' (Node 'L' (Node 'W' (Node 'C' Empty Empty) (Node 'R' Empty Empty)) (Node 'A' (Node 'A' Empty Empty) (Node 'C' Empty Empty)))])
@@ -426,3 +426,31 @@ Manipulating a Filesystem
 > fsNewFile item (Folder folderName items, bs) = (Folder folderName (item:items), bs)
 
 Watch Your Step
+
+> goLeft, goRight :: Zipper a -> Maybe (Zipper a)
+> goLeft (Node x l r, bs)  = Just (l, LeftCrumb x r:bs)
+> goLeft (Empty, _)        = Nothing
+> goRight (Node x l r, bs) = Just (r, RightCrumb x l:bs)
+> goRight (Empty, _)       = Nothing
+
+  *ZIP_15> goLeft (Empty, [])
+  Nothing
+  *ZIP_15> goLeft (Node 'A' Empty Empty, [])
+  Just (Empty,[LeftCrumb 'A' Empty])
+  *ZIP_15> it >>= goLeft
+  Nothing
+
+> goUp :: Zipper a -> Maybe (Zipper a)
+> goUp (t, LeftCrumb x r:bs)  = Just (Node x t r, bs)
+> goUp (t, RightCrumb x l:bs) = Just (Node x l t, bs)
+> goUp (_, [])                = Nothing
+
+  *ZIP_15> let coolTree = Node 1 Empty (Node 3 Empty E
+  EQ      Either  Empty   Enum    Eq
+  *ZIP_15> let coolTree = Node 1 Empty (Node 3 Empty Empty )
+  *ZIP_15> return (coolTree, []) >>= goRight
+  Just (Node 3 Empty Empty,[RightCrumb 1 Empty])
+  *ZIP_15> it >>= goRight
+  Just (Empty,[RightCrumb 3 Empty,RightCrumb 1 Empty])
+  *ZIP_15> it >>= goRight
+  Nothing
