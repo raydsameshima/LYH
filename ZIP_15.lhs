@@ -104,6 +104,7 @@ One way would be to pattern match on our tree until we find the element, by firs
     )
 
 Not only is this rather ugly, it's also kind of confusing.
+
 Here is our freetree:
 
          P
@@ -328,3 +329,22 @@ Going Straight to the Top, Where the Air is Fresh and Clean!
 > topMost :: Zipper a -> Zipper a
 > topMost (t,[]) = (t, [])     -- terminal condition
 > topMost z = topMost $ goUp z -- recursion
+
+  *ZIP_15> (freeTree, []) -: goLeft -: goLeft -: goRight
+  (Node 'T' Empty Empty,[RightCrumb 'L' (Node 'N' Empty Empty),LeftCrumb 'O' (Node 'Y' (Node 'S' Empty Empty) (Node 'A' Empty Empty)),LeftCrumb 'P' (Node 'L' (Node 'W' (Node 'C' Empty Empty) (Node 'R' Empty Empty)) (Node 'A' (Node 'A' Empty Empty) (Node 'C' Empty Empty)))])
+  *ZIP_15> topMost it
+  (Node 'P' (Node 'O' (Node 'L' (Node 'N' Empty Empty) (Node 'T' Empty Empty)) (Node 'Y' (Node 'S' Empty Empty) (Node 'A' Empty Empty))) (Node 'L' (Node 'W' (Node 'C' Empty Empty) (Node 'R' Empty Empty)) (Node 'A' (Node 'A' Empty Empty) (Node 'C' Empty Empty))),[])
+
+Focusing on Lists
+Zippers can be used with pretty much any data structure, so it's no surprise that they work with sublists of lists.
+
+A list can be seen as a tree with no sub tree (a straight tree).
+
+> type ListZipper a = ([a], [a])
+>
+> goForward :: ListZipper a -> ListZipper a
+> goForward (x:xs, bs) = (xs, x:bs)
+> goBack :: ListZipper a -> ListZipper a
+> goBack (xs, b:bs) = (b:xs, bs)
+
+A very Simple Filesystem
